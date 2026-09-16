@@ -1,0 +1,1 @@
+"use client";import {createBrowserClient} from "@supabase/ssr";export function Logout(){return <button className="btn btn-light" onClick={async()=>{const u=process.env.NEXT_PUBLIC_SUPABASE_URL,k=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(u&&k)await createBrowserClient(u,k).auth.signOut();location.href="/admin/login"}}>Logout</button>}
