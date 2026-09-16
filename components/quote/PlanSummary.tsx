@@ -5,7 +5,7 @@ const mowingIncluded = {
   es: ["Corte de césped", "Desbroce con línea", "Bordes en superficies duras", "Soplado de residuos en áreas atendidas", "Soporte por mensaje para su solicitud"],
 };
 
-export function PlanSummary({ booking, locale, optionalServices = [], mowArea = "front_back" }: { booking: BookingSummary; locale: "en" | "es"; optionalServices?: string[]; mowArea?: "front_back" | "front" | "back" }) {
+export function PlanSummary({ booking, locale, optionalServices = [], mowArea = "front_back", latitude, longitude }: { booking: BookingSummary; locale: "en" | "es"; optionalServices?: string[]; mowArea?: "front_back" | "front" | "back"; latitude?: number; longitude?: number }) {
   const es = locale === "es";
   const custom = booking.estimate === null;
   return (
@@ -21,6 +21,7 @@ export function PlanSummary({ booking, locale, optionalServices = [], mowArea = 
           <strong>{es ? "Solicitud, no cita confirmada" : "Request, not a confirmed appointment"}</strong>
           <p>{es ? "Nieto Green Care confirmará alcance, fecha e importe final por teléfono o mensaje." : "Nieto Green Care will confirm scope, date, and final amount by phone or text."}</p>
         </div>
+        {latitude && longitude ? <div className="satellite-preview" role="img" aria-label={es ? "Vista satelital aproximada de la propiedad seleccionada" : "Approximate satellite view of the selected property"} style={{backgroundImage:`linear-gradient(rgba(0,230,118,.18),rgba(0,230,118,.18)),url("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${longitude-.002},${latitude-.002},${longitude+.002},${latitude+.002}&bboxSR=4326&size=700,380&format=jpg&f=image")`}}><span>{es ? "Área medida en el mapa" : "Area measured on map"}</span></div> : null}
       </div>
       <dl className="plan-meta">
         <div><dt>{es ? "Dirección" : "Address"}</dt><dd>{booking.address}</dd></div>

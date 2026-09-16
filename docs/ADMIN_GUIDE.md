@@ -5,6 +5,7 @@ Visit `/admin/login` and use the Supabase Auth account authorized in `admin_prof
 - **Overview / Leads:** monitor genuine requests and status. `completed` automatically timestamps completion; changing away clears it.
 - **Quote details:** each quote records ZIP, occupancy, selected mow area, corner-lot status, requested add-ons, property-condition answers, referral source, and special requests. Treat requested dates as preferences until route capacity is reviewed.
 - **Services:** maintain bilingual names/descriptions, active/featured state, order, and starting price. Zero means Custom Quote.
+- **Calendar capacity:** maintain `schedule_capacity` only for dates that are genuinely full; the public calendar renders those dates in red and prevents selection.
 - **Pricing:** create non-overlapping square-foot ranges per service and frequency. Minimum must be nonnegative, maximum must not be below minimum, and price must be positive. Test boundaries after changes.
 - **Service Areas:** publish only confirmed cities and genuinely distinct local content.
 - **Gallery:** upload only authorized real work as JPEG, PNG, or WebP up to 5 MB; add meaningful alt text and bilingual captions before publishing.

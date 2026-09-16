@@ -2,7 +2,7 @@
 
 1. Create a Supabase project in the intended production region.
 2. Copy Project URL and the current **publishable key** into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Older projects may label the public key `anon`; it is compatible with the installed SDK. Add the service-role key only to the server environment.
-3. Run every file in `supabase/migrations/` in numeric order (`001`, then `002`), followed by `supabase/seed.sql`. Prefer the Supabase CLI migration workflow for ongoing production changes.
+3. Run every file in `supabase/migrations/` in numeric order (`001`, `002`, `003`, then `004`), followed by `supabase/seed.sql`. Prefer the Supabase CLI migration workflow for ongoing production changes.
 4. In Authentication, enable email/password. Configure Site URL and allowed redirect URLs for local and production hosts.
 5. Create `nietogreencare@gmail.com` manually in Auth with a strong password delivered securely. Insert its Auth UUID: `insert into public.admin_profiles(user_id) values ('AUTH-USER-UUID');`. Never put that password in source control.
 6. The migration creates the public `gallery` bucket with a 5 MB limit and JPEG/PNG/WebP allowlist. Uploads require an authenticated admin; metadata should include truthful alt text and approved captions.
