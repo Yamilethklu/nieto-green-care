@@ -12,7 +12,7 @@ Next.js App Router, TypeScript, Tailwind CSS, Supabase (PostgreSQL/Auth/Storage)
 - Dynamic services with a development fallback; seven original local service-area pages.
 - Seven-step satellite quote flow: Texas-focused Nominatim search, Esri imagery, editable lawn polygons, square-foot calculation, scheduling, review, secure lead save, SMS, and Calendar links.
 - Server-side validation and price verification; optional non-blocking Resend notification.
-- Supabase schema, RLS, Storage restrictions, customer metrics, admin authentication and data dashboard.
+- Supabase schema, RLS, Storage restrictions, customer metrics, admin authentication, gallery upload, and data dashboard.
 - Metadata, sitemap, robots, structured data, privacy/terms drafts, responsive conversion actions, accessible focus and reduced-motion behavior.
 
 ## Local setup
@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-The public catalog renders from safe fallback data without Supabase. Lead saving and admin features intentionally show unavailable states until Supabase is configured.
+The public catalog and garden gallery render from safe fallback data without Supabase. Lead saving, authenticated admin access, and image uploads require Supabase configuration.
 
 ## Environment variables
 
