@@ -1,1 +1,0 @@
-import {LoginForm} from "@/components/admin/LoginForm";export default function Page(){return <main className="section soft" style={{minHeight:"100vh"}}><div className="container" style={{maxWidth:460}}><LoginForm/></div></main>}

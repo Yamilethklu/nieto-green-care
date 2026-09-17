@@ -1,1 +1,69 @@
-import {notFound} from "next/navigation";import {requireAdmin} from "@/lib/supabase/auth";import {QrPanel} from "@/components/admin/QrPanel";import {GalleryUpload} from "@/components/admin/GalleryUpload";const tables:{[key:string]:string}={leads:"leads",services:"services",pricing:"pricing_rules","service-areas":"service_areas",gallery:"gallery",customers:"customer_service_metrics",settings:"site_settings"};export default async function Page({params}:{params:Promise<{section:string}>}){const {section}=await params;if(section==="qr")return <><h1>QR Code</h1><QrPanel/></>;const table=tables[section];if(!table)notFound();const auth=await requireAdmin();const {data,error}=await auth!.db.from(table).select("*").limit(100);return <><h1>{section.replace("-"," ")}</h1>{section==="gallery"&&<GalleryUpload/>}<p className="notice">Authenticated administrative data. Content changes are enforced by Supabase RLS.</p>{error?<div className="empty">Unable to load this module.</div>:<pre className="card" style={{overflow:"auto",whiteSpace:"pre-wrap"}}>{JSON.stringify(data,null,2)}</pre>}</>}
+import {notFound} from "next/navigation";
+import {requireAdmin} from "@/lib/supabase/auth";
+import {QrPanel} from "@/components/admin/QrPanel";
+import {GalleryUpload} from "@/components/admin/GalleryUpload";
+import {saveService,deleteService,savePricing,deletePricing,saveArea,deleteArea,saveSetting,updateGallery,deleteGallery} from "../actions";
+
+type ServiceRow={id?:string;slug?:string;name_en?:string;name_es?:string;description_en?:string;description_es?:string;starting_price?:number;pricing_unit?:string|null;active?:boolean;featured?:boolean;sort_order?:number};
+type ServiceOption={id:string;name_en:string};
+type PricingRow={id?:string;service_id?:string;frequency?:string;min_sqft?:number;max_sqft?:number|null;price?:number;active?:boolean};
+type AreaRow={id?:string;name?:string;slug?:string;content_en?:string;content_es?:string;sort_order?:number;active?:boolean};
+type GalleryRow={id:string;storage_path:string|null;image_url:string;alt_text:string;caption_en:string|null;caption_es:string|null;sort_order:number;published:boolean};
+type CustomerRow={customer_key:string;customer_name:string;phone:string|null;email:string|null;total_requests:number;completed_services:number;last_service_date:string|null};
+type SettingRow={key:string;value:unknown};
+
+function settingValue(value:unknown){
+  if(typeof value==="object"&&value!==null&&"value" in value){
+    const nested=(value as {value?:unknown}).value;
+    if(typeof nested==="string")return nested;
+  }
+  return typeof value==="string"?value:JSON.stringify(value??"");
+}
+
+export default async function Page({params}:{params:Promise<{section:string}>}){
+  const {section}=await params;
+  if(section==="qr")return <><header className="admin-page-head"><div><div className="eyebrow">MARKETING TOOL</div><h1>QR Code</h1><p>Generate a scannable shortcut to the official website.</p></div></header><QrPanel/></>;
+  if(!["services","pricing","service-areas","gallery","customers","settings"].includes(section))notFound();
+  const auth=await requireAdmin();
+  const db=auth!.db;
+
+  if(section==="services"){
+    const {data=[]}=await db.from("services").select("*").order("sort_order");
+    const rows=(data||[]) as ServiceRow[];
+    return <Module name="Services" desc="Edit the public landscaping catalog without touching code."><ServiceForm/>{rows.map(x=><ServiceForm key={x.id} x={x}/>)}</Module>;
+  }
+
+  if(section==="pricing"){
+    const [{data:rules=[]},{data:services=[]}]=await Promise.all([db.from("pricing_rules").select("*").order("min_sqft"),db.from("services").select("id,name_en").eq("active",true).order("sort_order")]);
+    const pricingRows=(rules||[]) as PricingRow[];
+    const serviceRows=(services||[]) as ServiceOption[];
+    return <Module name="Pricing" desc="Control square-foot pricing and service frequency rules."><PricingForm services={serviceRows}/>{pricingRows.map(x=><PricingForm key={x.id} x={x} services={serviceRows}/>)}</Module>;
+  }
+
+  if(section==="service-areas"){
+    const {data=[]}=await db.from("service_areas").select("*").order("sort_order");
+    const rows=(data||[]) as AreaRow[];
+    return <Module name="Service Areas" desc="Manage the Texas communities shown on the public site."><AreaForm/>{rows.map(x=><AreaForm key={x.id} x={x}/>)}</Module>;
+  }
+
+  if(section==="gallery"){
+    const {data=[]}=await db.from("gallery").select("*").order("sort_order");
+    const rows=(data||[]) as GalleryRow[];
+    return <Module name="Gallery" desc="Upload and publish only approved Nieto Green Care project photos."><GalleryUpload/>{rows.map(x=><form action={updateGallery} className="admin-editor" key={x.id}><input type="hidden" name="id" value={x.id}/><input type="hidden" name="storage_path" value={x.storage_path||""}/><img src={x.image_url} alt={x.alt_text}/><label>Alt text<input className="input" name="alt_text" defaultValue={x.alt_text} required/></label><label>English caption<input className="input" name="caption_en" defaultValue={x.caption_en||""}/></label><label>Spanish caption<input className="input" name="caption_es" defaultValue={x.caption_es||""}/></label><label>Order<input className="input" type="number" name="sort_order" defaultValue={x.sort_order}/></label><label className="check"><input type="checkbox" name="published" defaultChecked={x.published}/> Published</label><button className="btn btn-primary">Save photo</button><button className="btn btn-light" formAction={deleteGallery}>Delete</button></form>)}</Module>;
+  }
+
+  if(section==="customers"){
+    const {data=[]}=await db.from("customer_service_metrics").select("*").order("last_service_date",{ascending:false});
+    const rows=(data||[]) as CustomerRow[];
+    return <Module name="Customers" desc="Recurring customer and completed-service history."><div className="admin-table">{rows.map(x=><div className="admin-table-row" key={x.customer_key}><strong>{x.customer_name}</strong><span>{x.phone||x.email}</span><span>{x.total_requests} requests</span><span>{x.completed_services} completed</span><span>{x.last_service_date?new Date(x.last_service_date).toLocaleDateString():"—"}</span></div>)}</div></Module>;
+  }
+
+  const {data=[]}=await db.from("site_settings").select("*").order("key");
+  const rows=(data||[]) as SettingRow[];
+  return <Module name="Settings" desc="Operational values available to the application."><form action={saveSetting} className="admin-editor"><label>Setting key<input className="input" name="key" required placeholder="business_hours"/></label><label>Value<input className="input" name="value" required/></label><button className="btn btn-primary">Add / update</button></form>{rows.map(x=><form action={saveSetting} className="admin-editor" key={x.key}><input type="hidden" name="key" value={x.key}/><strong>{x.key}</strong><input className="input" name="value" defaultValue={settingValue(x.value)}/><button className="btn btn-primary">Save</button></form>)}</Module>;
+}
+
+function Module({name,desc,children}:{name:string;desc:string;children:React.ReactNode}){return <><header className="admin-page-head"><div><div className="eyebrow">CONTROL CENTER</div><h1>{name}</h1><p>{desc}</p></div></header><div className="admin-edit-list">{children}</div></>}
+function ServiceForm({x={}}:{x?:ServiceRow}){return <form action={saveService} className="admin-editor"><input type="hidden" name="id" value={x.id||""}/><label>Slug<input className="input" name="slug" defaultValue={x.slug||""} required/></label><label>English name<input className="input" name="name_en" defaultValue={x.name_en||""} required/></label><label>Spanish name<input className="input" name="name_es" defaultValue={x.name_es||""} required/></label><label className="wide">English description<textarea className="input" name="description_en" defaultValue={x.description_en||""}/></label><label className="wide">Spanish description<textarea className="input" name="description_es" defaultValue={x.description_es||""}/></label><label>Starting price<input className="input" type="number" step="0.01" min="0" name="starting_price" defaultValue={x.starting_price||0}/></label><label>Pricing unit<input className="input" name="pricing_unit" defaultValue={x.pricing_unit||""}/></label><label>Order<input className="input" type="number" name="sort_order" defaultValue={x.sort_order||0}/></label><label className="check"><input type="checkbox" name="active" defaultChecked={x.id?x.active:true}/> Active</label><label className="check"><input type="checkbox" name="featured" defaultChecked={x.featured}/> Featured</label><button className="btn btn-primary">{x.id?"Save service":"Add service"}</button>{x.id&&<button className="btn btn-light" formAction={deleteService}>Delete</button>}</form>}
+function PricingForm({x={},services}:{x?:PricingRow;services:ServiceOption[]}){return <form action={savePricing} className="admin-editor"><input type="hidden" name="id" value={x.id||""}/><label>Service<select className="input" name="service_id" defaultValue={x.service_id||""} required><option value="">Choose service</option>{services.map(s=><option value={s.id} key={s.id}>{s.name_en}</option>)}</select></label><label>Frequency<select className="input" name="frequency" defaultValue={x.frequency||"one_time"}>{["one_time","weekly","biweekly","monthly"].map(v=><option key={v}>{v}</option>)}</select></label><label>Min sq ft<input className="input" type="number" min="0" name="min_sqft" defaultValue={x.min_sqft||0}/></label><label>Max sq ft<input className="input" type="number" min="0" name="max_sqft" defaultValue={x.max_sqft??""}/></label><label>Price $<input className="input" type="number" step="0.01" min="0.01" name="price" defaultValue={x.price||""} required/></label><label className="check"><input type="checkbox" name="active" defaultChecked={x.id?x.active:true}/> Active</label><button className="btn btn-primary">{x.id?"Save rule":"Add rule"}</button>{x.id&&<button className="btn btn-light" formAction={deletePricing}>Delete</button>}</form>}
+function AreaForm({x={}}:{x?:AreaRow}){return <form action={saveArea} className="admin-editor"><input type="hidden" name="id" value={x.id||""}/><label>City<input className="input" name="name" defaultValue={x.name||""} required/></label><label>Slug<input className="input" name="slug" defaultValue={x.slug||""} required/></label><label className="wide">English content<textarea className="input" name="content_en" defaultValue={x.content_en||""}/></label><label className="wide">Spanish content<textarea className="input" name="content_es" defaultValue={x.content_es||""}/></label><label>Order<input className="input" type="number" name="sort_order" defaultValue={x.sort_order||0}/></label><label className="check"><input type="checkbox" name="active" defaultChecked={x.id?x.active:true}/> Active</label><button className="btn btn-primary">{x.id?"Save area":"Add area"}</button>{x.id&&<button className="btn btn-light" formAction={deleteArea}>Delete</button>}</form>}

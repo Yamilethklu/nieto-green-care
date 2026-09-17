@@ -4,13 +4,21 @@ import {isLocale} from "@/lib/i18n";
 import {publicDb} from "@/lib/supabase/server";
 import {galleryFallback} from "@/lib/data";
 
+type GalleryPhoto={
+  id:string;
+  image_url:string;
+  alt_text:string;
+  caption_en:string|null;
+  caption_es:string|null;
+};
+
 export default async function Page({params}:{params:Promise<{locale:string}>}){
   const {locale}=await params;
   if(!isLocale(locale))notFound();
   const es=locale==="es";
   const db=publicDb();
-  const {data}=db?await db.from("gallery").select("*").eq("published",true).order("sort_order"):{data:null};
-  const photos=data?.length?data:galleryFallback;
+  const {data}=db?await db.from("gallery").select("id,image_url,alt_text,caption_en,caption_es").eq("published",true).order("sort_order"):{data:null};
+  const photos:GalleryPhoto[]=data?.length?(data as GalleryPhoto[]):galleryFallback;
 
   return <>
     <section className="portfolio-hero">
@@ -26,7 +34,7 @@ export default async function Page({params}:{params:Promise<{locale:string}>}){
     </section>
     <section className="section">
       <div className="container">
-        {photos.length?<div className="gallery-grid">{photos.map((x:any,i:number)=><figure className={`gallery-photo ${i===0?"gallery-featured":""}`} key={x.id}><img loading={i===0?"eager":"lazy"} width="1400" height="1050" src={x.image_url} alt={x.alt_text}/><figcaption><span>{es?"Proyecto Nieto Green Care":"Nieto Green Care project"}</span><strong>{es?x.caption_es:x.caption_en}</strong></figcaption></figure>)}</div>:<div className="real-work-empty"><div className="eyebrow">{es?"PORTAFOLIO EN PREPARACIÓN":"PORTFOLIO IN PROGRESS"}</div><h2>{es?"Estamos preparando las fotografías reales para publicarlas con la mejor calidad.":"We’re preparing our real project photos for a high-quality web presentation."}</h2><p className="muted">{es?"No utilizamos fotografías genéricas para representar trabajos que no sean nuestros.":"We do not use generic photography to represent work we did not perform."}</p><Link className="btn btn-primary" href={`/${locale}/quote`}>{es?"SOLICITAR COTIZACIÓN":"REQUEST A QUOTE"}</Link></div>}
+        {photos.length?<div className="gallery-grid">{photos.map((x,i)=><figure className={`gallery-photo ${i===0?"gallery-featured":""}`} key={x.id}><img loading={i===0?"eager":"lazy"} width="1400" height="1050" src={x.image_url} alt={x.alt_text}/><figcaption><span>{es?"Proyecto Nieto Green Care":"Nieto Green Care project"}</span><strong>{es?x.caption_es:x.caption_en}</strong></figcaption></figure>)}</div>:<div className="real-work-empty"><div className="eyebrow">{es?"PORTAFOLIO EN PREPARACIÓN":"PORTFOLIO IN PROGRESS"}</div><h2>{es?"Estamos preparando las fotografías reales para publicarlas con la mejor calidad.":"We’re preparing our real project photos for a high-quality web presentation."}</h2><p className="muted">{es?"No utilizamos fotografías genéricas para representar trabajos que no sean nuestros.":"We do not use generic photography to represent work we did not perform."}</p><Link className="btn btn-primary" href={`/${locale}/quote`}>{es?"SOLICITAR COTIZACIÓN":"REQUEST A QUOTE"}</Link></div>}
       </div>
     </section>
   </>;

@@ -1,1 +1,0 @@
-"use client";export default function ErrorPage({reset}:{reset:()=>void}){return <main className="section"><div className="container empty"><h1>Something went wrong</h1><p>Please try again. No internal details have been exposed.</p><button className="btn btn-primary" onClick={reset}>Try again</button></div></main>}
