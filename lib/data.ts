@@ -20,8 +20,7 @@ export const areas=[
 {slug:"cedar-park-tx",name:"Cedar Park",en:"Consistent property care that keeps Cedar Park lawns clean, edged, and manageable.",es:"Cuidado consistente que mantiene los jardines de Cedar Park limpios y definidos."},
 {slug:"liberty-hill-tx",name:"Liberty Hill",en:"Practical lawn and acreage-edge maintenance with clear communication from request to follow-up.",es:"Mantenimiento práctico con comunicación clara desde la solicitud hasta el seguimiento."},
 {slug:"jarrell-tx",name:"Jarrell",en:"Local lawn service options for routine upkeep, cleanup, and new landscape projects.",es:"Opciones locales para mantenimiento, limpieza y nuevos proyectos de jardín."}];
-export const galleryFallback=[
-{id:"garden-1",image_url:"https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=85",alt_text:"Freshly edged green lawn beside a garden bed",caption_en:"A clean edge changes the whole yard.",caption_es:"Un borde limpio transforma todo el jardín."},
-{id:"garden-2",image_url:"https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=1200&q=85",alt_text:"Hands planting flowers in rich garden soil",caption_en:"Thoughtful planting for a garden that lasts.",caption_es:"Plantación cuidadosa para un jardín duradero."},
-{id:"garden-3",image_url:"https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?auto=format&fit=crop&w=1200&q=85",alt_text:"Layered garden beds with ornamental plants",caption_en:"Outdoor spaces made easier to enjoy.",caption_es:"Espacios exteriores más fáciles de disfrutar."}];
+// Phase 2: the public gallery must contain only approved Nieto Green Care project photos.
+// Until real images are published through the gallery table, we intentionally show no fallback stock photography.
+export const galleryFallback:never[]=[];
 export const localized=(s:Service,l:Locale)=>({name:l==="es"?s.name_es:s.name_en,description:l==="es"?s.description_es:s.description_en});
