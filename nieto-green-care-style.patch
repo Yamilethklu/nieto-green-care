@@ -1,0 +1,236 @@
+From 4d090254793294d12d73d70713b7937fe1c98d1f Mon Sep 17 00:00:00 2001
+From: Nieto Green Care <dev@nietogreencare.com>
+Date: Thu, 17 Sep 2026 08:54:02 +0000
+Subject: [PATCH] style: adopt vibrant Mow Managers color scheme and refine UI
+
+---
+ app/[locale]/page.tsx           |  2 +-
+ app/globals.css                 | 73 +++++++++++++++++++--------------
+ components/layout/Header.tsx    |  2 +-
+ components/layout/SmsWidget.tsx |  6 +--
+ 4 files changed, 48 insertions(+), 35 deletions(-)
+
+diff --git a/app/[locale]/page.tsx b/app/[locale]/page.tsx
+index 364fbe9..fc5bc36 100644
+--- a/app/[locale]/page.tsx
++++ b/app/[locale]/page.tsx
+@@ -1,2 +1,2 @@
+ import Link from "next/link";import {notFound} from "next/navigation";import {getServices} from "@/lib/services";import {areas} from "@/lib/data";import {isLocale} from "@/lib/i18n";import {ServiceCards} from "@/components/ServiceCards";import {JsonLd} from "@/components/JsonLd";import {APP_URL,BUSINESS} from "@/lib/config";
+-export default async function Home({params}:{params:Promise<{locale:string}>}){const {locale}=await params;if(!isLocale(locale))notFound();const es=locale==="es",services=await getServices();return <><JsonLd data={{"@context":"https://schema.org","@type":"LocalBusiness",name:BUSINESS.name,url:`${APP_URL}/${locale}`,telephone:BUSINESS.displayPhone,email:BUSINESS.email,areaServed:areas.map(a=>`${a.name}, TX`)}}/><section className="hero"><div className="container hero-grid"><div><div className="eyebrow">{es?"Cuidado local • Centro de Texas":"Local care • Central Texas"}</div><h1 className="title">{es?"Césped bien cuidado. Servicio sin complicaciones.":"A better-kept lawn, without the runaround."}</h1><p className="muted" style={{fontSize:"1.15rem",maxWidth:620}}>{es?"Cuidado profesional de césped, paisajismo y mantenimiento con programación sencilla y comunicación clara.":"Professional lawn care, landscaping, and property maintenance with simple scheduling and clear communication."}</p><div className="actions"><Link className="btn btn-primary" href={`/${locale}/quote`}>{es?"Obtenga una cotización gratis":"Get a Free Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{es?"Llamar ahora":"Call Now"}</a></div><div className="trust"><span>✓ {es?"Servicio local":"Local service"}</span><span>✓ {es?"Opciones recurrentes":"Recurring options"}</span><span>✓ {es?"Comunicación clara":"Clear communication"}</span></div></div><div className="hero-art"><div className="hero-note"><strong>{es?"Áreas confirmadas":"Confirmed service areas"}</strong><p className="muted">{areas.map(a=>a.name).join(" • ")}</p></div></div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Servicios":"Services"}</div><h2 className="section-title">{es?"Cuidado diseñado para su propiedad":"Property care built around your needs"}</h2><p className="muted">{es?"Desde el mantenimiento recurrente hasta mejoras específicas.":"From recurring upkeep to focused landscape improvements."}</p><ServiceCards services={services.filter(s=>s.featured)} locale={locale}/></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Cómo funciona":"How it works"}</div><h2 className="section-title">{es?"De su dirección a una solicitud clara":"From your address to a clear request"}</h2><div className="grid cards steps">{(es?["Ingrese su propiedad","Mida su césped","Obtenga su estimado","Elija su servicio","Programe su solicitud"]:["Enter your property","Measure your lawn","Get your estimate","Choose your service","Schedule your request"]).map(x=><div className="card step" key={x}><strong>{x}</strong></div>)}</div></div></section><section className="section"><div className="container cta"><div className="eyebrow" style={{color:"#d7ed9c"}}>Satellite quote</div><h2 className="section-title">{es?"Mida su césped y obtenga un estimado":"Measure Your Lawn & Get an Estimate"}</h2><p>{es?"Busque su dirección, dibuje las áreas de césped y envíe una solicitud detallada.":"Find your address, draw your lawn areas, and send a detailed service request."}</p><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Comenzar":"Start measuring"}</Link></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Por qué nosotros":"Why Nieto Green Care"}</div><div className="grid cards">{(es?[["Servicio confiable","Solicitudes claras y seguimiento humano."],["Atención al detalle","Bordes, limpieza y acabados importan."],["Programación sencilla","Opciones únicas y recurrentes para su rutina."]]:[["Dependable service","Clear requests and human follow-up."],["Attention to detail","Edges, cleanup, and the final finish matter."],["Easy scheduling","One-time and recurring options built around your routine."]]).map(([a,b])=><div className="card" key={a}><h3>{a}</h3><p className="muted">{b}</p></div>)}</div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Áreas de servicio":"Service areas"}</div><h2 className="section-title">{es?"Cuidado local en comunidades confirmadas":"Local care across confirmed communities"}</h2>{areas.map(a=><Link className="area" key={a.slug} href={`/${locale}/service-areas/${a.slug}`}><span>{a.name}, TX</span><span>→</span></Link>)}</div></section><section className="section"><div className="container empty"><h2>{es?"Galería lista para trabajo real":"A gallery reserved for real work"}</h2><p className="muted">{es?"Las fotografías se publicarán después de ser aprobadas por Nieto Green Care.":"Approved Nieto Green Care project photos will appear here as they are published."}</p></div></section><section className="section"><div className="container cta"><h2 className="section-title">{es?"¿Listo para hablar de su propiedad?":"Ready to talk about your property?"}</h2><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Cotizar":"Get Quote"}</Link><a className="cta-secondary" href={`tel:${BUSINESS.phone}`} aria-label={es?`Llamar a ${BUSINESS.displayPhone}`:`Call ${BUSINESS.displayPhone}`}>{es?"Llamar":"Call Us"} · {BUSINESS.displayPhone}</a><a className="cta-sms" href={`sms:${BUSINESS.phone}`} aria-label={es?"Enviar mensaje de texto":"Text us"}>{es?"Enviar Mensaje":"Text Us"}</a></div></div></section></>}
++export default async function Home({params}:{params:Promise<{locale:string}>}){const {locale}=await params;if(!isLocale(locale))notFound();const es=locale==="es",services=await getServices();return <><JsonLd data={{"@context":"https://schema.org","@type":"LocalBusiness",name:BUSINESS.name,url:`${APP_URL}/${locale}`,telephone:BUSINESS.displayPhone,email:BUSINESS.email,areaServed:areas.map(a=>`${a.name}, TX`)}}/><section className="hero"><div className="container hero-grid"><div><div className="eyebrow">{es?"Cuidado local • Centro de Texas":"Local care • Central Texas"}</div><h1 className="title">{es?"Césped bien cuidado. Servicio sin complicaciones.":"A better-kept lawn, without the runaround."}</h1><p className="muted" style={{fontSize:"1.15rem",maxWidth:620}}>{es?"Cuidado profesional de césped, paisajismo y mantenimiento con programación sencilla y comunicación clara.":"Professional lawn care, landscaping, and property maintenance with simple scheduling and clear communication."}</p><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Obtenga una cotización gratis":"Get a Free Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{es?"Llamar ahora":"Call Now"}</a></div><div className="trust"><span>✓ {es?"Servicio local":"Local service"}</span><span>✓ {es?"Opciones recurrentes":"Recurring options"}</span><span>✓ {es?"Comunicación clara":"Clear communication"}</span></div></div><div className="hero-art"><div className="hero-note"><strong>{es?"Áreas confirmadas":"Confirmed service areas"}</strong><p className="muted">{areas.map(a=>a.name).join(" • ")}</p></div></div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Servicios":"Services"}</div><h2 className="section-title">{es?"Cuidado diseñado para su propiedad":"Property care built around your needs"}</h2><p className="muted">{es?"Desde el mantenimiento recurrente hasta mejoras específicas.":"From recurring upkeep to focused landscape improvements."}</p><ServiceCards services={services.filter(s=>s.featured)} locale={locale}/></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Cómo funciona":"How it works"}</div><h2 className="section-title">{es?"De su dirección a una solicitud clara":"From your address to a clear request"}</h2><div className="grid cards steps">{(es?["Ingrese su propiedad","Mida su césped","Obtenga su estimado","Elija su servicio","Programe su solicitud"]:["Enter your property","Measure your lawn","Get your estimate","Choose your service","Schedule your request"]).map(x=><div className="card step" key={x}><strong>{x}</strong></div>)}</div></div></section><section className="section"><div className="container cta"><div className="eyebrow" style={{color:"#84CC16"}}>Satellite quote</div><h2 className="section-title">{es?"Mida su césped y obtenga un estimado":"Measure Your Lawn & Get an Estimate"}</h2><p>{es?"Busque su dirección, dibuje las áreas de césped y envíe una solicitud detallada.":"Find your address, draw your lawn areas, and send a detailed service request."}</p><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Comenzar":"Start measuring"}</Link></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Por qué nosotros":"Why Nieto Green Care"}</div><div className="grid cards">{(es?[["Servicio confiable","Solicitudes claras y seguimiento humano."],["Atención al detalle","Bordes, limpieza y acabados importan."],["Programación sencilla","Opciones únicas y recurrentes para su rutina."]]:[["Dependable service","Clear requests and human follow-up."],["Attention to detail","Edges, cleanup, and the final finish matter."],["Easy scheduling","One-time and recurring options built around your routine."]]).map(([a,b])=><div className="card" key={a}><h3>{a}</h3><p className="muted">{b}</p></div>)}</div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Áreas de servicio":"Service areas"}</div><h2 className="section-title">{es?"Cuidado local en comunidades confirmadas":"Local care across confirmed communities"}</h2>{areas.map(a=><Link className="area" key={a.slug} href={`/${locale}/service-areas/${a.slug}`}><span>{a.name}, TX</span><span>→</span></Link>)}</div></section><section className="section"><div className="container empty"><h2>{es?"Galería lista para trabajo real":"A gallery reserved for real work"}</h2><p className="muted">{es?"Las fotografías se publicarán después de ser aprobadas por Nieto Green Care.":"Approved Nieto Green Care project photos will appear here as they are published."}</p></div></section><section className="section"><div className="container cta"><h2 className="section-title">{es?"¿Listo para hablar de su propiedad?":"Ready to talk about your property?"}</h2><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Cotizar":"Get Quote"}</Link><a className="cta-secondary" href={`tel:${BUSINESS.phone}`} aria-label={es?`Llamar a ${BUSINESS.displayPhone}`:`Call ${BUSINESS.displayPhone}`}>{es?"Llamar":"Call Us"} · {BUSINESS.displayPhone}</a><a className="cta-sms" href={`sms:${BUSINESS.phone}`} aria-label={es?"Enviar mensaje de texto":"Text us"}>{es?"Enviar Mensaje":"Text Us"}</a></div></div></section></>}
+diff --git a/app/globals.css b/app/globals.css
+index b53efa1..f6cd93b 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -7,19 +7,26 @@
+    ========================================================================== */
+ 
+ :root {
+-  --forest: #123c2d;
+-  --forest-2: #1b4d3e;
++  /* Mow Managers palette
++     conversion accents: lime #84cc16 / emerald #00e676
++     contrast surfaces:  forest #1b4d3e / deep forest #0f2e25 */
++  --forest: #1b4d3e;
++  --forest-deep: #0f2e25;
++  --forest-hover: #24634f;
+   --leaf: #347a4d;
+   --lime: #84cc16;
+   --lime-bright: #00e676;
++  --lime-soft: #eaf7cf;
+   --sand: #d7ed9c;
+   --cream: #f6f3ea;
+   --ink: #17221c;
+   --line: #dfe7df;
+   --paper: #fffdf8;
+-  --shadow-sm: 0 6px 18px rgba(20, 50, 35, .08);
+-  --shadow-md: 0 14px 40px rgba(20, 50, 35, .12);
+-  --shadow-lg: 0 24px 60px rgba(20, 50, 35, .18);
++  --shadow-sm: 0 6px 18px rgba(15, 46, 37, .08);
++  --shadow-md: 0 14px 40px rgba(15, 46, 37, .14);
++  --shadow-lg: 0 24px 60px rgba(15, 46, 37, .2);
++  /* shadow-xl with a lime tint, the equivalent of shadow-lime-500/20 */
++  --shadow-lime: 0 20px 45px -12px rgba(132, 204, 22, .45), 0 8px 20px rgba(15, 46, 37, .12);
+ }
+ 
+ * { box-sizing: border-box }
+@@ -40,7 +47,7 @@ body:before {
+   z-index: -1;
+   pointer-events: none;
+   opacity: .16;
+-  background-image: radial-gradient(#123c2d .5px, transparent .5px);
++  background-image: radial-gradient(#1b4d3e .5px, transparent .5px);
+   background-size: 18px 18px;
+ }
+ 
+@@ -97,11 +104,11 @@ button, input, select, textarea { font: inherit }
+ }
+ .btn:disabled { opacity: .55; cursor: not-allowed; transform: none }
+ .btn-primary { background: var(--forest); color: #fff; box-shadow: var(--shadow-sm) }
+-.btn-primary:not(:disabled):hover { background: var(--forest-2); transform: translateY(-1px); box-shadow: var(--shadow-md) }
+-.btn-light { background: var(--paper); border-color: #cbd9cc; color: var(--forest) }
++.btn-primary:not(:disabled):hover { background: var(--forest-hover); transform: translateY(-1px); box-shadow: var(--shadow-md) }
++.btn-light { background: var(--paper); border-color: #cbd9cc; color: var(--forest-deep) }
+ .btn-light:not(:disabled):hover { background: #fff; border-color: var(--leaf) }
+-.btn-accent { background: var(--lime); color: #14301f; box-shadow: var(--shadow-sm) }
+-.btn-accent:not(:disabled):hover { background: var(--lime-bright); color: var(--forest); transform: translateY(-1px); box-shadow: var(--shadow-md) }
++.btn-accent { background: var(--lime); color: var(--forest-deep); box-shadow: var(--shadow-lime) }
++.btn-accent:not(:disabled):hover { background: var(--lime-bright); color: var(--forest-deep); transform: translateY(-2px); box-shadow: var(--shadow-lime) }
+ 
+ /* High-contrast secondary buttons used inside the dark CTA banner */
+ .cta-secondary {
+@@ -118,7 +125,7 @@ button, input, select, textarea { font: inherit }
+   font-weight: 700;
+   transition: background-color .2s, color .2s;
+ }
+-.cta-secondary:hover, .cta-secondary:focus-visible { background: #fff; color: var(--forest-2) }
++.cta-secondary:hover, .cta-secondary:focus-visible { background: #fff; color: var(--forest) }
+ 
+ .cta-sms {
+   display: inline-flex;
+@@ -134,16 +141,19 @@ button, input, select, textarea { font: inherit }
+   font-weight: 700;
+   transition: background-color .2s, color .2s;
+ }
+-.cta-sms:hover, .cta-sms:focus-visible { background: var(--lime-bright); color: var(--forest) }
++.cta-sms { box-shadow: var(--shadow-lime) }
++.cta-sms:hover, .cta-sms:focus-visible { background: var(--lime-bright); color: var(--forest-deep) }
+ 
+ /* ---------- cards ---------- */
+ .card {
+   border: 1px solid var(--line);
+-  border-radius: 1.3rem;
+-  padding: 1.5rem;
+-  background: rgba(255, 255, 255, .92);
++  border-radius: 1.5rem;
++  padding: 1.6rem;
++  background: #fff;
+   box-shadow: var(--shadow-sm);
++  transition: transform .2s, box-shadow .2s, border-color .2s;
+ }
++.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: #c7dca0 }
+ .card h3 { font-size: 1.3rem; margin: .7rem 0 }
+ 
+ .steps { counter-reset: steps }
+@@ -175,7 +185,7 @@ button, input, select, textarea { font: inherit }
+ /* ---------- hero ---------- */
+ .hero {
+   background:
+-    radial-gradient(circle at 82% 18%, rgba(132, 204, 22, .35) 0, transparent 30%),
++    radial-gradient(circle at 82% 18%, rgba(132, 204, 22, .42) 0, transparent 32%),
+     linear-gradient(135deg, #f8f5ed, #eef5ea);
+   overflow: hidden;
+ }
+@@ -190,7 +200,7 @@ button, input, select, textarea { font: inherit }
+ .hero-art {
+   min-height: 420px;
+   border-radius: 2rem;
+-  background: linear-gradient(145deg, rgba(18, 60, 45, .12), rgba(18, 60, 45, .78)), url('/landscape-placeholder.svg') center/cover;
++  background: linear-gradient(145deg, rgba(27, 77, 62, .1), rgba(15, 46, 37, .8)), url('/landscape-placeholder.svg') center/cover;
+   display: flex;
+   align-items: end;
+   padding: 2rem;
+@@ -219,19 +229,21 @@ button, input, select, textarea { font: inherit }
+ .area:hover { padding-inline: .4rem; color: var(--leaf) }
+ 
+ .cta {
+-  background: linear-gradient(120deg, var(--forest), #275f43);
++  background: linear-gradient(120deg, var(--forest-deep), var(--forest) 55%, #24634f);
+   color: #fff;
+   border-radius: 2rem;
+   padding: clamp(2rem, 6vw, 4.5rem);
+   box-shadow: var(--shadow-lg);
+ }
++.cta .eyebrow { color: var(--sand) }
+ .cta .section-title { color: #fff }
+ 
+ .notice {
+-  padding: 1rem;
+-  border: 1px solid #d5e2d0;
+-  background: #f1f6ee;
+-  border-radius: .8rem;
++  padding: 1rem 1.15rem;
++  border: 1px solid #cfe4a6;
++  border-left: 4px solid var(--lime);
++  background: var(--lime-soft);
++  border-radius: .9rem;
+   margin: 1rem 0;
+ }
+ .empty {
+@@ -252,7 +264,7 @@ button, input, select, textarea { font: inherit }
+   border-radius: .7rem;
+   background: #fff;
+ }
+-.input:focus { outline: 3px solid #b8d688; outline-offset: 1px }
++.input:focus { outline: 3px solid var(--lime); outline-offset: 1px }
+ .field-error { color: #a32020; font-size: .82rem; font-weight: 700 }
+ .form-error {
+   border: 1px solid #e0b4b4;
+@@ -266,7 +278,7 @@ button, input, select, textarea { font: inherit }
+ 
+ .progress { display: flex; gap: .35rem; margin: 0 0 1.75rem }
+ .progress span { height: 6px; flex: 1; background: #d9dfda; border-radius: 9px }
+-.progress .on { background: var(--lime) }
++.progress .on { background: var(--lime); box-shadow: 0 0 0 1px rgba(132, 204, 22, .35) }
+ 
+ .review-list { display: grid; gap: .6rem; margin: 1.25rem 0 0 }
+ .review-list dt { font-size: .76rem; text-transform: uppercase; letter-spacing: .09em; color: #59675f; font-weight: 800 }
+@@ -300,21 +312,22 @@ button, input, select, textarea { font: inherit }
+   border-radius: 999px;
+   font-size: .75rem;
+   font-weight: 800;
+-  background: #e8f1e4;
+-  color: var(--forest);
++  background: var(--lime-soft);
++  color: var(--forest-deep);
+ }
+-.badge.completed { background: #d8f5d0 }
++.badge.completed { background: rgba(0, 230, 118, .22); color: var(--forest-deep) }
+ .badge.cancelled { background: #f6dede; color: #8a2020 }
+ 
+ /* ---------- footer ---------- */
+-.footer { background: #0d2c22; color: #dfe9e2; padding: 4rem 0 6rem }
++.footer { background: var(--forest-deep); color: #dfe9e2; padding: 4rem 0 6rem }
++.footer a:hover { color: var(--lime) }
+ .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem }
+ 
+ /* ---------- admin ---------- */
+ .admin-shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; background: var(--cream) }
+-.sidebar { display: grid; align-content: start; gap: .5rem; background: #102e24; color: #fff; padding: 2rem 1rem }
++.sidebar { display: grid; align-content: start; gap: .5rem; background: var(--forest-deep); color: #fff; padding: 2rem 1rem }
+ .sidebar a { display: block; padding: .65rem; border-radius: .5rem }
+-.sidebar a:hover { background: #214b3b }
++.sidebar a:hover { background: var(--forest); color: var(--lime) }
+ .admin-main { padding: 2rem; max-width: 1200px; width: 100%; overflow: auto }
+ 
+ /* ---------- floating SMS widget (fallback styles) ---------- */
+diff --git a/components/layout/Header.tsx b/components/layout/Header.tsx
+index ce84085..224d580 100644
+--- a/components/layout/Header.tsx
++++ b/components/layout/Header.tsx
+@@ -1,2 +1,2 @@
+ "use client";import Link from "next/link";import {useState} from "react";import type {Locale} from "@/types";import {t} from "@/lib/i18n";import {BUSINESS} from "@/lib/config";
+-export function Header({locale}: {locale:Locale}){const [open,setOpen]=useState(false);const x=t[locale],base=`/${locale}`;const links=[["",x.home],["/services",x.services],["/service-areas",x.areas],["/gallery",x.gallery],["/about",x.about],["/faq",x.faq],["/contact",x.contact]];return <><header className="header"><div className="container nav"><Link className="brand" href={base}>NIETO <span>GREEN CARE</span></Link><nav className="navlinks" aria-label="Main navigation">{links.map(([h,n])=><Link key={h} href={base+h}>{n}</Link>)}</nav><Link href={`/${locale==="en"?"es":"en"}`} aria-label="Change language">{locale==="en"?"ES":"EN"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{x.call}</a><Link className="btn btn-primary" href={`${base}/quote`}>{x.quote}</Link><button className="mobile-menu btn btn-light" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label="Menu">☰</button></div>{open&&<nav className="container grid" style={{paddingBottom:"1rem"}}>{links.map(([h,n])=><Link onClick={()=>setOpen(false)} key={h} href={base+h}>{n}</Link>)}</nav>}</header><div className="sticky-actions"><a href={`tel:${BUSINESS.phone}`}>{x.call}</a><a href={`sms:${BUSINESS.phone}`}>{x.text}</a><Link href={`${base}/quote`}>{x.quote}</Link></div></>}
++export function Header({locale}: {locale:Locale}){const [open,setOpen]=useState(false);const x=t[locale],base=`/${locale}`;const links=[["",x.home],["/services",x.services],["/service-areas",x.areas],["/gallery",x.gallery],["/about",x.about],["/faq",x.faq],["/contact",x.contact]];return <><header className="header"><div className="container nav"><Link className="brand" href={base}>NIETO <span>GREEN CARE</span></Link><nav className="navlinks" aria-label="Main navigation">{links.map(([h,n])=><Link key={h} href={base+h}>{n}</Link>)}</nav><Link href={`/${locale==="en"?"es":"en"}`} aria-label="Change language">{locale==="en"?"ES":"EN"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{x.call}</a><Link className="btn btn-accent" href={`${base}/quote`}>{x.quote}</Link><button className="mobile-menu btn btn-light" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label="Menu">☰</button></div>{open&&<nav className="container grid" style={{paddingBottom:"1rem"}}>{links.map(([h,n])=><Link onClick={()=>setOpen(false)} key={h} href={base+h}>{n}</Link>)}</nav>}</header><div className="sticky-actions"><a href={`tel:${BUSINESS.phone}`}>{x.call}</a><a href={`sms:${BUSINESS.phone}`}>{x.text}</a><Link href={`${base}/quote`}>{x.quote}</Link></div></>}
+diff --git a/components/layout/SmsWidget.tsx b/components/layout/SmsWidget.tsx
+index e4a17aa..5ab45fd 100644
+--- a/components/layout/SmsWidget.tsx
++++ b/components/layout/SmsWidget.tsx
+@@ -3,11 +3,11 @@
+ export function SmsWidget() {
+   return (
+     <aside className="sms-widget fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-3" aria-label="Text support">
+-      <div className="sms-widget__card flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-xl ring-1 ring-slate-200">
+-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-500 text-xs font-bold text-white" aria-hidden="true">NG</div>
++      <div className="sms-widget__card flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-xl ring-1 ring-lime-500/20">
++        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-500 text-xs font-bold text-[#0F2E25]" aria-hidden="true">NG</div>
+         <p>Hi there, have a question? Text us here.</p>
+       </div>
+-      <a className="inline-flex items-center gap-2 rounded-full bg-lime-500 px-5 py-3 font-bold text-slate-950 shadow-lg transition hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-lime-300" href="sms:+17373144215" aria-label="Text Nieto Green Care">
++      <a className="inline-flex items-center gap-2 rounded-full bg-lime-500 px-5 py-3 font-bold text-[#0F2E25] shadow-xl shadow-lime-500/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-lime-300" href="sms:+17373144215" aria-label="Text Nieto Green Care">
+         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7 2.75h10A2.25 2.25 0 0 1 19.25 5v14A2.25 2.25 0 0 1 17 21.25H7A2.25 2.25 0 0 1 4.75 19V5A2.25 2.25 0 0 1 7 2.75ZM12 17.25h.01" /></svg>
+         <span>Text us</span>
+         <span aria-hidden="true">›</span>
+-- 
+2.43.0
+

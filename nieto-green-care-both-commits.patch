@@ -1,0 +1,1904 @@
+From 6aa6d7e8e14584f3942eee271c1217c7407c02ef Mon Sep 17 00:00:00 2001
+From: Nieto Green Care <dev@nietogreencare.com>
+Date: Thu, 17 Sep 2026 08:38:00 +0000
+Subject: [PATCH 1/2] fix: restore Tailwind CSS in layout, resolve QuoteWizard
+ validation schema, refine CTA buttons and fix admin panel
+
+---
+ app/[locale]/page.tsx                         |   2 +-
+ app/admin/(dashboard)/[section]/page.tsx      |   2 +-
+ app/admin/(dashboard)/layout.tsx              |   2 +-
+ app/admin/(dashboard)/leads/page.tsx          |  83 ++++
+ app/admin/(dashboard)/page.tsx                |  73 ++-
+ app/admin/(dashboard)/schedule/page.tsx       |  70 +++
+ app/admin/actions.ts                          |  60 +++
+ app/api/leads/route.ts                        | 141 +++++-
+ app/globals.css                               | 374 ++++++++++++++-
+ components/admin/CapacityForm.tsx             |  78 ++++
+ components/admin/LeadStatusSelect.tsx         |  45 ++
+ components/layout/SmsWidget.tsx               |   4 +-
+ components/quote/QuoteWizard.tsx              | 433 +++++++++++++++++-
+ lib/lead-schema.test.ts                       |  40 ++
+ lib/validation.ts                             |  98 +++-
+ ...002_lead_details_and_schedule_capacity.sql |  29 ++
+ 16 files changed, 1507 insertions(+), 27 deletions(-)
+ create mode 100644 app/admin/(dashboard)/leads/page.tsx
+ create mode 100644 app/admin/(dashboard)/schedule/page.tsx
+ create mode 100644 app/admin/actions.ts
+ create mode 100644 components/admin/CapacityForm.tsx
+ create mode 100644 components/admin/LeadStatusSelect.tsx
+ create mode 100644 lib/lead-schema.test.ts
+ create mode 100644 supabase/migrations/002_lead_details_and_schedule_capacity.sql
+
+diff --git a/app/[locale]/page.tsx b/app/[locale]/page.tsx
+index edc7494..364fbe9 100644
+--- a/app/[locale]/page.tsx
++++ b/app/[locale]/page.tsx
+@@ -1,2 +1,2 @@
+ import Link from "next/link";import {notFound} from "next/navigation";import {getServices} from "@/lib/services";import {areas} from "@/lib/data";import {isLocale} from "@/lib/i18n";import {ServiceCards} from "@/components/ServiceCards";import {JsonLd} from "@/components/JsonLd";import {APP_URL,BUSINESS} from "@/lib/config";
+-export default async function Home({params}:{params:Promise<{locale:string}>}){const {locale}=await params;if(!isLocale(locale))notFound();const es=locale==="es",services=await getServices();return <><JsonLd data={{"@context":"https://schema.org","@type":"LocalBusiness",name:BUSINESS.name,url:`${APP_URL}/${locale}`,telephone:BUSINESS.displayPhone,email:BUSINESS.email,areaServed:areas.map(a=>`${a.name}, TX`)}}/><section className="hero"><div className="container hero-grid"><div><div className="eyebrow">{es?"Cuidado local • Centro de Texas":"Local care • Central Texas"}</div><h1 className="title">{es?"Césped bien cuidado. Servicio sin complicaciones.":"A better-kept lawn, without the runaround."}</h1><p className="muted" style={{fontSize:"1.15rem",maxWidth:620}}>{es?"Cuidado profesional de césped, paisajismo y mantenimiento con programación sencilla y comunicación clara.":"Professional lawn care, landscaping, and property maintenance with simple scheduling and clear communication."}</p><div className="actions"><Link className="btn btn-primary" href={`/${locale}/quote`}>{es?"Obtenga una cotización gratis":"Get a Free Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{es?"Llamar ahora":"Call Now"}</a></div><div className="trust"><span>✓ {es?"Servicio local":"Local service"}</span><span>✓ {es?"Opciones recurrentes":"Recurring options"}</span><span>✓ {es?"Comunicación clara":"Clear communication"}</span></div></div><div className="hero-art"><div className="hero-note"><strong>{es?"Áreas confirmadas":"Confirmed service areas"}</strong><p className="muted">{areas.map(a=>a.name).join(" • ")}</p></div></div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Servicios":"Services"}</div><h2 className="section-title">{es?"Cuidado diseñado para su propiedad":"Property care built around your needs"}</h2><p className="muted">{es?"Desde el mantenimiento recurrente hasta mejoras específicas.":"From recurring upkeep to focused landscape improvements."}</p><ServiceCards services={services.filter(s=>s.featured)} locale={locale}/></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Cómo funciona":"How it works"}</div><h2 className="section-title">{es?"De su dirección a una solicitud clara":"From your address to a clear request"}</h2><div className="grid cards steps">{(es?["Ingrese su propiedad","Mida su césped","Obtenga su estimado","Elija su servicio","Programe su solicitud"]:["Enter your property","Measure your lawn","Get your estimate","Choose your service","Schedule your request"]).map(x=><div className="card step" key={x}><strong>{x}</strong></div>)}</div></div></section><section className="section"><div className="container cta"><div className="eyebrow" style={{color:"#d7ed9c"}}>Satellite quote</div><h2 className="section-title">{es?"Mida su césped y obtenga un estimado":"Measure Your Lawn & Get an Estimate"}</h2><p>{es?"Busque su dirección, dibuje las áreas de césped y envíe una solicitud detallada.":"Find your address, draw your lawn areas, and send a detailed service request."}</p><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Comenzar":"Start measuring"}</Link></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Por qué nosotros":"Why Nieto Green Care"}</div><div className="grid cards">{(es?[["Servicio confiable","Solicitudes claras y seguimiento humano."],["Atención al detalle","Bordes, limpieza y acabados importan."],["Programación sencilla","Opciones únicas y recurrentes para su rutina."]]:[["Dependable service","Clear requests and human follow-up."],["Attention to detail","Edges, cleanup, and the final finish matter."],["Easy scheduling","One-time and recurring options built around your routine."]]).map(([a,b])=><div className="card" key={a}><h3>{a}</h3><p className="muted">{b}</p></div>)}</div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Áreas de servicio":"Service areas"}</div><h2 className="section-title">{es?"Cuidado local en comunidades confirmadas":"Local care across confirmed communities"}</h2>{areas.map(a=><Link className="area" key={a.slug} href={`/${locale}/service-areas/${a.slug}`}><span>{a.name}, TX</span><span>→</span></Link>)}</div></section><section className="section"><div className="container empty"><h2>{es?"Galería lista para trabajo real":"A gallery reserved for real work"}</h2><p className="muted">{es?"Las fotografías se publicarán después de ser aprobadas por Nieto Green Care.":"Approved Nieto Green Care project photos will appear here as they are published."}</p></div></section><section className="section"><div className="container cta"><h2 className="section-title">{es?"¿Listo para hablar de su propiedad?":"Ready to talk about your property?"}</h2><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Cotizar":"Get Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{BUSINESS.displayPhone}</a><a className="btn btn-light" href={`sms:${BUSINESS.phone}`}>{es?"Enviar mensaje":"Text Us"}</a></div></div></section></>}
++export default async function Home({params}:{params:Promise<{locale:string}>}){const {locale}=await params;if(!isLocale(locale))notFound();const es=locale==="es",services=await getServices();return <><JsonLd data={{"@context":"https://schema.org","@type":"LocalBusiness",name:BUSINESS.name,url:`${APP_URL}/${locale}`,telephone:BUSINESS.displayPhone,email:BUSINESS.email,areaServed:areas.map(a=>`${a.name}, TX`)}}/><section className="hero"><div className="container hero-grid"><div><div className="eyebrow">{es?"Cuidado local • Centro de Texas":"Local care • Central Texas"}</div><h1 className="title">{es?"Césped bien cuidado. Servicio sin complicaciones.":"A better-kept lawn, without the runaround."}</h1><p className="muted" style={{fontSize:"1.15rem",maxWidth:620}}>{es?"Cuidado profesional de césped, paisajismo y mantenimiento con programación sencilla y comunicación clara.":"Professional lawn care, landscaping, and property maintenance with simple scheduling and clear communication."}</p><div className="actions"><Link className="btn btn-primary" href={`/${locale}/quote`}>{es?"Obtenga una cotización gratis":"Get a Free Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{es?"Llamar ahora":"Call Now"}</a></div><div className="trust"><span>✓ {es?"Servicio local":"Local service"}</span><span>✓ {es?"Opciones recurrentes":"Recurring options"}</span><span>✓ {es?"Comunicación clara":"Clear communication"}</span></div></div><div className="hero-art"><div className="hero-note"><strong>{es?"Áreas confirmadas":"Confirmed service areas"}</strong><p className="muted">{areas.map(a=>a.name).join(" • ")}</p></div></div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Servicios":"Services"}</div><h2 className="section-title">{es?"Cuidado diseñado para su propiedad":"Property care built around your needs"}</h2><p className="muted">{es?"Desde el mantenimiento recurrente hasta mejoras específicas.":"From recurring upkeep to focused landscape improvements."}</p><ServiceCards services={services.filter(s=>s.featured)} locale={locale}/></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Cómo funciona":"How it works"}</div><h2 className="section-title">{es?"De su dirección a una solicitud clara":"From your address to a clear request"}</h2><div className="grid cards steps">{(es?["Ingrese su propiedad","Mida su césped","Obtenga su estimado","Elija su servicio","Programe su solicitud"]:["Enter your property","Measure your lawn","Get your estimate","Choose your service","Schedule your request"]).map(x=><div className="card step" key={x}><strong>{x}</strong></div>)}</div></div></section><section className="section"><div className="container cta"><div className="eyebrow" style={{color:"#d7ed9c"}}>Satellite quote</div><h2 className="section-title">{es?"Mida su césped y obtenga un estimado":"Measure Your Lawn & Get an Estimate"}</h2><p>{es?"Busque su dirección, dibuje las áreas de césped y envíe una solicitud detallada.":"Find your address, draw your lawn areas, and send a detailed service request."}</p><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Comenzar":"Start measuring"}</Link></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Por qué nosotros":"Why Nieto Green Care"}</div><div className="grid cards">{(es?[["Servicio confiable","Solicitudes claras y seguimiento humano."],["Atención al detalle","Bordes, limpieza y acabados importan."],["Programación sencilla","Opciones únicas y recurrentes para su rutina."]]:[["Dependable service","Clear requests and human follow-up."],["Attention to detail","Edges, cleanup, and the final finish matter."],["Easy scheduling","One-time and recurring options built around your routine."]]).map(([a,b])=><div className="card" key={a}><h3>{a}</h3><p className="muted">{b}</p></div>)}</div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Áreas de servicio":"Service areas"}</div><h2 className="section-title">{es?"Cuidado local en comunidades confirmadas":"Local care across confirmed communities"}</h2>{areas.map(a=><Link className="area" key={a.slug} href={`/${locale}/service-areas/${a.slug}`}><span>{a.name}, TX</span><span>→</span></Link>)}</div></section><section className="section"><div className="container empty"><h2>{es?"Galería lista para trabajo real":"A gallery reserved for real work"}</h2><p className="muted">{es?"Las fotografías se publicarán después de ser aprobadas por Nieto Green Care.":"Approved Nieto Green Care project photos will appear here as they are published."}</p></div></section><section className="section"><div className="container cta"><h2 className="section-title">{es?"¿Listo para hablar de su propiedad?":"Ready to talk about your property?"}</h2><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Cotizar":"Get Quote"}</Link><a className="cta-secondary" href={`tel:${BUSINESS.phone}`} aria-label={es?`Llamar a ${BUSINESS.displayPhone}`:`Call ${BUSINESS.displayPhone}`}>{es?"Llamar":"Call Us"} · {BUSINESS.displayPhone}</a><a className="cta-sms" href={`sms:${BUSINESS.phone}`} aria-label={es?"Enviar mensaje de texto":"Text us"}>{es?"Enviar Mensaje":"Text Us"}</a></div></div></section></>}
+diff --git a/app/admin/(dashboard)/[section]/page.tsx b/app/admin/(dashboard)/[section]/page.tsx
+index eec6881..d921a8e 100644
+--- a/app/admin/(dashboard)/[section]/page.tsx
++++ b/app/admin/(dashboard)/[section]/page.tsx
+@@ -1 +1 @@
+-import {notFound} from "next/navigation";import {requireAdmin} from "@/lib/supabase/auth";import {QrPanel} from "@/components/admin/QrPanel";import {GalleryUpload} from "@/components/admin/GalleryUpload";const tables:{[key:string]:string}={leads:"leads",services:"services",pricing:"pricing_rules","service-areas":"service_areas",gallery:"gallery",customers:"customer_service_metrics",settings:"site_settings"};export default async function Page({params}:{params:Promise<{section:string}>}){const {section}=await params;if(section==="qr")return <><h1>QR Code</h1><QrPanel/></>;const table=tables[section];if(!table)notFound();const auth=await requireAdmin();const {data,error}=await auth!.db.from(table).select("*").limit(100);return <><h1>{section.replace("-"," ")}</h1>{section==="gallery"&&<GalleryUpload/>}<p className="notice">Authenticated administrative data. Content changes are enforced by Supabase RLS.</p>{error?<div className="empty">Unable to load this module.</div>:<pre className="card" style={{overflow:"auto",whiteSpace:"pre-wrap"}}>{JSON.stringify(data,null,2)}</pre>}</>}
++import {notFound} from "next/navigation";import {requireAdmin} from "@/lib/supabase/auth";import {QrPanel} from "@/components/admin/QrPanel";import {GalleryUpload} from "@/components/admin/GalleryUpload";const tables:{[key:string]:string}={services:"services",pricing:"pricing_rules","service-areas":"service_areas",gallery:"gallery",customers:"customer_service_metrics",settings:"site_settings"};export default async function Page({params}:{params:Promise<{section:string}>}){const {section}=await params;if(section==="qr")return <><h1>QR Code</h1><QrPanel/></>;const table=tables[section];if(!table)notFound();const auth=await requireAdmin();const {data,error}=await auth!.db.from(table).select("*").limit(100);return <><h1>{section.replace("-"," ")}</h1>{section==="gallery"&&<GalleryUpload/>}<p className="notice">Authenticated administrative data. Content changes are enforced by Supabase RLS.</p>{error?<div className="empty">Unable to load this module.</div>:<pre className="card" style={{overflow:"auto",whiteSpace:"pre-wrap"}}>{JSON.stringify(data,null,2)}</pre>}</>}
+diff --git a/app/admin/(dashboard)/layout.tsx b/app/admin/(dashboard)/layout.tsx
+index 63d8630..17539dc 100644
+--- a/app/admin/(dashboard)/layout.tsx
++++ b/app/admin/(dashboard)/layout.tsx
+@@ -1 +1 @@
+-import Link from "next/link";import {redirect} from "next/navigation";import {requireAdmin} from "@/lib/supabase/auth";import {Logout} from "@/components/admin/Logout";export default async function Layout({children}:{children:React.ReactNode}){const auth=await requireAdmin();if(!auth)redirect("/admin/login");const nav=[["","Overview"],["leads","Leads"],["services","Services"],["pricing","Pricing"],["service-areas","Service Areas"],["gallery","Gallery"],["customers","Customers"],["qr","QR Code"],["settings","Settings"]];return <div className="admin-shell"><aside className="sidebar"><strong>NIETO GREEN CARE</strong>{nav.map(([x,n])=><Link href={`/admin/${x}`} key={x}>{n}</Link>)}<Logout/></aside><main className="admin-main">{children}</main></div>}
++import Link from "next/link";import {redirect} from "next/navigation";import {requireAdmin} from "@/lib/supabase/auth";import {Logout} from "@/components/admin/Logout";export default async function Layout({children}:{children:React.ReactNode}){const auth=await requireAdmin();if(!auth)redirect("/admin/login");const nav=[["","Overview"],["leads","Leads"],["schedule","Schedule"],["services","Services"],["pricing","Pricing"],["service-areas","Service Areas"],["gallery","Gallery"],["customers","Customers"],["qr","QR Code"],["settings","Settings"]];return <div className="admin-shell"><aside className="sidebar"><strong>NIETO GREEN CARE</strong>{nav.map(([x,n])=><Link href={`/admin/${x}`} key={x}>{n}</Link>)}<Logout/></aside><main className="admin-main">{children}</main></div>}
+diff --git a/app/admin/(dashboard)/leads/page.tsx b/app/admin/(dashboard)/leads/page.tsx
+new file mode 100644
+index 0000000..e8763c7
+--- /dev/null
++++ b/app/admin/(dashboard)/leads/page.tsx
+@@ -0,0 +1,83 @@
++import {redirect} from "next/navigation";
++import {requireAdmin} from "@/lib/supabase/auth";
++import {LeadStatusSelect} from "@/components/admin/LeadStatusSelect";
++
++type Lead = {
++  id: string;
++  full_name: string | null;
++  phone: string | null;
++  email: string | null;
++  property_address: string | null;
++  lawn_sqft: number | null;
++  frequency: string | null;
++  requested_date: string | null;
++  estimated_price: number | null;
++  status: string;
++  created_at: string;
++};
++
++export default async function Page() {
++  const auth = await requireAdmin();
++  if (!auth) redirect("/admin/login");
++
++  const {data, error} = await auth.db
++    .from("leads")
++    .select(
++      "id,full_name,phone,email,property_address,lawn_sqft,frequency,requested_date,estimated_price,status,created_at"
++    )
++    .order("created_at", {ascending: false})
++    .limit(200);
++
++  const leads = (data || []) as Lead[];
++
++  return (
++    <>
++      <h1>Leads</h1>
++      <p className="notice">Change a status to move a request through scheduled → completed or cancelled.</p>
++
++      {error && <div className="empty">Unable to load leads right now.</div>}
++
++      {!error && leads.length === 0 && <div className="empty">No requests yet.</div>}
++
++      {leads.length > 0 && (
++        <table className="table">
++          <thead>
++            <tr>
++              <th>Received</th>
++              <th>Customer</th>
++              <th>Contact</th>
++              <th>Address</th>
++              <th>Service details</th>
++              <th>Estimate</th>
++              <th>Status</th>
++            </tr>
++          </thead>
++          <tbody>
++            {leads.map((lead) => (
++              <tr key={lead.id}>
++                <td>{new Date(lead.created_at).toLocaleDateString()}</td>
++                <td>{lead.full_name || "—"}</td>
++                <td>
++                  {lead.phone && <div>{lead.phone}</div>}
++                  {lead.email && <div className="muted">{lead.email}</div>}
++                </td>
++                <td>{lead.property_address || "—"}</td>
++                <td>
++                  <div>{lead.frequency || "one_time"}</div>
++                  <div className="muted">
++                    {lead.lawn_sqft ? `${Math.round(lead.lawn_sqft).toLocaleString()} sq ft` : "Measure on site"}
++                    {lead.requested_date ? ` · ${lead.requested_date}` : ""}
++                  </div>
++                </td>
++                <td>{lead.estimated_price != null ? `$${Number(lead.estimated_price).toFixed(2)}` : "Custom"}</td>
++                <td>
++                  <LeadStatusSelect id={lead.id} status={lead.status} />
++                </td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++      )}
++    </>
++  );
++}
+diff --git a/app/admin/(dashboard)/page.tsx b/app/admin/(dashboard)/page.tsx
+index 60fd774..3d62880 100644
+--- a/app/admin/(dashboard)/page.tsx
++++ b/app/admin/(dashboard)/page.tsx
+@@ -1 +1,72 @@
+-import {requireAdmin} from "@/lib/supabase/auth";export default async function Page(){const auth=await requireAdmin();const {data}=await auth!.db.from("leads").select("id,status,full_name,created_at").order("created_at",{ascending:false}).limit(50);const leads=data||[],count=(s:string)=>leads.filter(x=>x.status===s).length;return <><h1>Overview</h1><div className="grid cards">{[["Total leads",leads.length],["Scheduled",count("scheduled")],["Completed",count("completed")],["Cancelled",count("cancelled")]].map(([a,b])=><div className="card" key={a}><span>{a}</span><h2>{b}</h2></div>)}</div><h2>Recent requests</h2>{leads.length?<table className="table"><tbody>{leads.slice(0,8).map(x=><tr key={x.id}><td>{x.full_name}</td><td>{x.status}</td><td>{new Date(x.created_at).toLocaleDateString()}</td></tr>)}</tbody></table>:<div className="empty">No lead data yet.</div>}</>}
++import Link from "next/link";
++import {redirect} from "next/navigation";
++import {requireAdmin} from "@/lib/supabase/auth";
++
++export default async function Page() {
++  const auth = await requireAdmin();
++  if (!auth) redirect("/admin/login");
++
++  const {data} = await auth.db
++    .from("leads")
++    .select("id,status,full_name,property_address,created_at")
++    .order("created_at", {ascending: false})
++    .limit(50);
++
++  const leads = data || [];
++  const count = (s: string) => leads.filter((x) => x.status === s).length;
++  const tiles: [string, number][] = [
++    ["Total leads", leads.length],
++    ["Scheduled", count("scheduled")],
++    ["Completed", count("completed")],
++    ["Cancelled", count("cancelled")],
++  ];
++
++  return (
++    <>
++      <h1>Overview</h1>
++      <div className="grid cards">
++        {tiles.map(([label, value]) => (
++          <div className="card" key={label}>
++            <span className="eyebrow">{label}</span>
++            <h2>{value}</h2>
++          </div>
++        ))}
++      </div>
++
++      <h2>Recent requests</h2>
++      {leads.length ? (
++        <>
++          <table className="table">
++            <thead>
++              <tr>
++                <th>Customer</th>
++                <th>Address</th>
++                <th>Status</th>
++                <th>Received</th>
++              </tr>
++            </thead>
++            <tbody>
++              {leads.slice(0, 8).map((x) => (
++                <tr key={x.id}>
++                  <td>{x.full_name || "—"}</td>
++                  <td>{x.property_address || "—"}</td>
++                  <td>
++                    <span className={`badge ${x.status}`}>{x.status}</span>
++                  </td>
++                  <td>{new Date(x.created_at).toLocaleDateString()}</td>
++                </tr>
++              ))}
++            </tbody>
++          </table>
++          <p style={{marginTop: "1rem"}}>
++            <Link className="btn btn-light" href="/admin/leads">
++              Manage all leads
++            </Link>
++          </p>
++        </>
++      ) : (
++        <div className="empty">No lead data yet.</div>
++      )}
++    </>
++  );
++}
+diff --git a/app/admin/(dashboard)/schedule/page.tsx b/app/admin/(dashboard)/schedule/page.tsx
+new file mode 100644
+index 0000000..1909a9f
+--- /dev/null
++++ b/app/admin/(dashboard)/schedule/page.tsx
+@@ -0,0 +1,70 @@
++import {redirect} from "next/navigation";
++import {requireAdmin} from "@/lib/supabase/auth";
++import {CapacityForm, CapacityDelete} from "@/components/admin/CapacityForm";
++
++type Capacity = {
++  id: string;
++  day: string;
++  max_jobs: number;
++  booked_jobs: number;
++  notes: string | null;
++};
++
++export default async function Page() {
++  const auth = await requireAdmin();
++  if (!auth) redirect("/admin/login");
++
++  const today = new Date().toISOString().slice(0, 10);
++  const {data, error} = await auth.db
++    .from("schedule_capacity")
++    .select("id,day,max_jobs,booked_jobs,notes")
++    .gte("day", today)
++    .order("day")
++    .limit(90);
++
++  const rows = (data || []) as Capacity[];
++
++  return (
++    <>
++      <h1>Schedule capacity</h1>
++      <p className="notice">Set how many jobs can be booked on a given day. Saving an existing day updates it.</p>
++
++      <CapacityForm />
++
++      {error && (
++        <div className="empty">
++          Unable to read schedule_capacity. Run migration 002 in Supabase, then reload this page.
++        </div>
++      )}
++
++      {!error && rows.length === 0 && <div className="empty">No capacity set for upcoming days.</div>}
++
++      {rows.length > 0 && (
++        <table className="table">
++          <thead>
++            <tr>
++              <th>Day</th>
++              <th>Booked</th>
++              <th>Max</th>
++              <th>Notes</th>
++              <th />
++            </tr>
++          </thead>
++          <tbody>
++            {rows.map((row) => (
++              <tr key={row.id}>
++                <td>{row.day}</td>
++                <td>{row.booked_jobs}</td>
++                <td>{row.max_jobs}</td>
++                <td>{row.notes || "—"}</td>
++                <td>
++                  <CapacityDelete id={row.id} />
++                </td>
++              </tr>
++            ))}
++          </tbody>
++        </table>
++      )}
++    </>
++  );
++}
+diff --git a/app/admin/actions.ts b/app/admin/actions.ts
+new file mode 100644
+index 0000000..6a3ed40
+--- /dev/null
++++ b/app/admin/actions.ts
+@@ -0,0 +1,60 @@
++"use server";
++
++import {revalidatePath} from "next/cache";
++import {requireAdmin} from "@/lib/supabase/auth";
++
++const STATUSES = ["scheduled", "completed", "cancelled"] as const;
++type Status = (typeof STATUSES)[number];
++
++export type ActionResult = {ok: boolean; message: string};
++
++export async function updateLeadStatus(id: string, status: string): Promise<ActionResult> {
++  const auth = await requireAdmin();
++  if (!auth) return {ok: false, message: "Not authorized."};
++  if (!STATUSES.includes(status as Status)) return {ok: false, message: "Unknown status."};
++
++  const {error} = await auth.db.from("leads").update({status}).eq("id", id);
++  if (error) {
++    console.error("Lead status update failed", error.code, error.message);
++    return {ok: false, message: "Could not update this request."};
++  }
++
++  revalidatePath("/admin");
++  revalidatePath("/admin/leads");
++  return {ok: true, message: "Status updated."};
++}
++
++export async function saveCapacity(day: string, maxJobs: number, notes: string): Promise<ActionResult> {
++  const auth = await requireAdmin();
++  if (!auth) return {ok: false, message: "Not authorized."};
++  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return {ok: false, message: "Pick a valid date."};
++  if (!Number.isFinite(maxJobs) || maxJobs < 0) return {ok: false, message: "Max jobs must be zero or more."};
++
++  const {error} = await auth.db
++    .from("schedule_capacity")
++    .upsert({day, max_jobs: Math.floor(maxJobs), notes: notes || null}, {onConflict: "day"});
++
++  if (error) {
++    console.error("Capacity upsert failed", error.code, error.message);
++    return {
++      ok: false,
++      message: /schedule_capacity/i.test(error.message || "")
++        ? "Run migration 002 to create the schedule_capacity table."
++        : "Could not save capacity.",
++    };
++  }
++
++  revalidatePath("/admin/schedule");
++  return {ok: true, message: "Capacity saved."};
++}
++
++export async function deleteCapacity(id: string): Promise<ActionResult> {
++  const auth = await requireAdmin();
++  if (!auth) return {ok: false, message: "Not authorized."};
++
++  const {error} = await auth.db.from("schedule_capacity").delete().eq("id", id);
++  if (error) return {ok: false, message: "Could not remove this day."};
++
++  revalidatePath("/admin/schedule");
++  return {ok: true, message: "Day removed."};
++}
+diff --git a/app/api/leads/route.ts b/app/api/leads/route.ts
+index 35d74db..6bb8871 100644
+--- a/app/api/leads/route.ts
++++ b/app/api/leads/route.ts
+@@ -1,2 +1,139 @@
+-import {NextRequest,NextResponse} from "next/server";import {leadSchema,normalizeEmail,normalizePhone} from "@/lib/validation";import {adminDb} from "@/lib/supabase/server";import {calculatePrice} from "@/lib/pricing";import type {PricingRule} from "@/types";import {Resend} from "resend";
+-export async function POST(req:NextRequest){const db=adminDb();if(!db)return NextResponse.json({error:"Online requests are not configured yet. Please call 737-314-4215."},{status:503});let input;try{input=leadSchema.parse(await req.json())}catch{return NextResponse.json({error:"Please review the required fields."},{status:400})}if(input.website)return NextResponse.json({ok:true});const {data:rules}=await db.from("pricing_rules").select("service_id,min_sqft,max_sqft,price,frequency,active").eq("service_id",input.service_id).eq("active",true);const estimate=calculatePrice(input.service_id,input.lawn_sqft,input.frequency,(rules||[]) as PricingRule[]);const {website:_,...lead}=input;const {data,error}=await db.from("leads").insert({...lead,email_normalized:normalizeEmail(input.email),phone_normalized:normalizePhone(input.phone),estimated_price:estimate,status:"scheduled"}).select("id").single();if(error){console.error("Lead insert failed",error.code);return NextResponse.json({error:"We could not save the request. Please call us."},{status:500})}if(process.env.RESEND_API_KEY&&process.env.EMAIL_TO&&process.env.EMAIL_FROM){new Resend(process.env.RESEND_API_KEY).emails.send({from:process.env.EMAIL_FROM,to:process.env.EMAIL_TO,subject:"New Nieto Green Care request",text:`New request from ${input.full_name}\n${input.property_address}\n${input.phone}\nRequested: ${input.requested_date} ${input.requested_time}`}).catch(e=>console.error("Booking email failed",e instanceof Error?e.message:"unknown"))}return NextResponse.json({id:data.id,estimated_price:estimate},{status:201})}
++import {NextRequest, NextResponse} from "next/server";
++import {leadSchema, fieldErrors, normalizeEmail, normalizePhone} from "@/lib/validation";
++import {adminDb} from "@/lib/supabase/server";
++import {calculatePrice} from "@/lib/pricing";
++import type {PricingRule} from "@/types";
++import {Resend} from "resend";
++
++const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++const isDate = (x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x);
++
++export async function POST(req: NextRequest) {
++  const db = adminDb();
++  if (!db) {
++    return NextResponse.json(
++      {error: "Online requests are not configured yet. Please call 737-314-4215."},
++      {status: 503}
++    );
++  }
++
++  let raw: unknown;
++  try {
++    raw = await req.json();
++  } catch {
++    return NextResponse.json({error: "Malformed request body."}, {status: 400});
++  }
++
++  const parsed = leadSchema.safeParse(raw);
++  if (!parsed.success) {
++    const fields = fieldErrors(parsed.error);
++    return NextResponse.json(
++      {
++        error: "Please review the highlighted fields.",
++        fields,
++        // Human-readable list so the UI can show exactly what is missing.
++        detail: Object.entries(fields).map(([k, v]) => `${k}: ${v}`),
++      },
++      {status: 400}
++    );
++  }
++
++  const input = parsed.data;
++  if (input.website) return NextResponse.json({ok: true});
++
++  // A service_id coming from the offline fallback catalogue is not a UUID and
++  // must not be sent to a uuid/foreign-key column.
++  const serviceId = UUID.test(input.service_id) ? input.service_id : null;
++
++  let estimate: number | null = null;
++  if (serviceId && input.lawn_sqft > 0) {
++    const {data: rules} = await db
++      .from("pricing_rules")
++      .select("service_id,min_sqft,max_sqft,price,frequency,active")
++      .eq("service_id", serviceId)
++      .eq("active", true);
++    estimate = calculatePrice(serviceId, input.lawn_sqft, input.frequency, (rules || []) as PricingRule[]);
++  }
++
++  // Everything the `leads` table does not have a column for is preserved in
++  // `details` (jsonb) instead of being dropped or breaking the insert.
++  const details = {
++    first_name: input.first_name,
++    last_name: input.last_name,
++    postal_code: input.postal_code,
++    property_occupancy: input.property_occupancy,
++    mow_area: input.mow_area,
++    is_corner_lot: input.is_corner_lot,
++    grass_over_6in: input.grass_over_6in,
++    grass_over_12in: input.grass_over_12in,
++    community_gate: input.community_gate,
++    backyard_gate: input.backyard_gate,
++    flower_beds: input.flower_beds,
++    pets_in_backyard: input.pets_in_backyard,
++    white_vinyl_fence: input.white_vinyl_fence,
++    above_ground_pool: input.above_ground_pool,
++    trampoline: input.trampoline,
++    optional_services: input.optional_services,
++    referral_source: input.referral_source,
++    special_requests: input.special_requests,
++    payment_preference: input.payment_preference,
++    service_slug_or_id: input.service_id,
++  };
++
++  const row = {
++    full_name: input.full_name,
++    email: input.email || null,
++    phone: input.phone,
++    email_normalized: input.email ? normalizeEmail(input.email) : null,
++    phone_normalized: normalizePhone(input.phone),
++    property_address: input.property_address,
++    latitude: input.latitude,
++    longitude: input.longitude,
++    lawn_sqft: input.lawn_sqft || null,
++    lawn_geometry: input.lawn_geometry,
++    service_id: serviceId,
++    requested_date: isDate(input.requested_date) ? input.requested_date : null,
++    requested_time: input.requested_time || null,
++    frequency: input.frequency,
++    waste_handling: input.waste_handling || null,
++    notes: [input.notes, input.special_requests].filter(Boolean).join("\n\n") || null,
++    payment_method: input.payment_method,
++    estimated_price: estimate,
++    status: "scheduled" as const,
++    details,
++  };
++
++  let {data, error} = await db.from("leads").insert(row).select("id").single();
++
++  // If the `details` column has not been migrated yet, retry without it rather
++  // than failing the customer's request.
++  if (error && /details/i.test(error.message || "")) {
++    const fallbackRow: Record<string, unknown> = {...row};
++    delete fallbackRow.details;
++    ({data, error} = await db.from("leads").insert(fallbackRow).select("id").single());
++  }
++
++  if (error || !data) {
++    console.error("Lead insert failed", error?.code, error?.message);
++    return NextResponse.json(
++      {error: "We could not save the request. Please call us at 737-314-4215."},
++      {status: 500}
++    );
++  }
++
++  if (process.env.RESEND_API_KEY && process.env.EMAIL_TO && process.env.EMAIL_FROM) {
++    new Resend(process.env.RESEND_API_KEY).emails
++      .send({
++        from: process.env.EMAIL_FROM,
++        to: process.env.EMAIL_TO,
++        subject: "New Nieto Green Care request",
++        text: `New request from ${input.full_name}
++${input.property_address}
++${input.phone}
++Requested: ${input.requested_date || "flexible"} ${input.requested_time || ""}`.trim(),
++      })
++      .catch((e) => console.error("Booking email failed", e instanceof Error ? e.message : "unknown"));
++  }
++
++  return NextResponse.json({id: data.id, estimated_price: estimate}, {status: 201});
++}
+diff --git a/app/globals.css b/app/globals.css
+index 1392d64..b53efa1 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -1,12 +1,366 @@
+ @import "tailwindcss";
+ 
+-:root{--forest:#123c2d;--leaf:#347a4d;--lime:#84cc16;--cream:#f6f3ea;--ink:#17221c;--line:#dfe7df;--paper:#fffdf8}
+-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--ink);background:var(--cream);font-family:Arial,Helvetica,sans-serif}
+-body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background-image:radial-gradient(#123c2d 0.5px,transparent .5px);background-size:18px 18px}
+-.cta-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:3rem;border:1px solid #fff;border-radius:9999px;background:transparent;color:#fff;padding:.75rem 1.25rem;font-weight:700;text-decoration:none;transition:background-color .2s,color .2s}
+-.cta-secondary:hover,.cta-secondary:focus-visible{background:#fff;color:#1b4d3e}
+-.cta-sms{display:inline-flex;align-items:center;justify-content:center;min-height:3rem;border:1px solid #84cc16;border-radius:9999px;background:#84cc16;color:#17221c;padding:.75rem 1.25rem;font-weight:700;text-decoration:none;transition:background-color .2s,color .2s}
+-.cta-sms:hover,.cta-sms:focus-visible{background:#00e676;color:#123c2d}
+-@media(max-width:900px){.navlinks{display:none}.mobile-menu{display:block}.hero-grid{grid-template-columns:1fr;min-height:auto;padding:4rem 0}.hero-art{min-height:350px}.footer-grid,.admin-shell{grid-template-columns:1fr}}
+-@media(max-width:600px){.section{padding:3.5rem 0}.sms-widget{right:1rem;bottom:1rem}.sms-widget__card{max-width:calc(100vw - 2rem)}}
+-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
++/* ==========================================================================
++   Nieto Green Care — global design system
++   Tailwind v4 is loaded above (utilities keep working, e.g. SmsWidget).
++   The classes below are the hand-written component layer used by the app.
++   ========================================================================== */
++
++:root {
++  --forest: #123c2d;
++  --forest-2: #1b4d3e;
++  --leaf: #347a4d;
++  --lime: #84cc16;
++  --lime-bright: #00e676;
++  --sand: #d7ed9c;
++  --cream: #f6f3ea;
++  --ink: #17221c;
++  --line: #dfe7df;
++  --paper: #fffdf8;
++  --shadow-sm: 0 6px 18px rgba(20, 50, 35, .08);
++  --shadow-md: 0 14px 40px rgba(20, 50, 35, .12);
++  --shadow-lg: 0 24px 60px rgba(20, 50, 35, .18);
++}
++
++* { box-sizing: border-box }
++html { scroll-behavior: smooth }
++
++body {
++  margin: 0;
++  color: var(--ink);
++  background: var(--cream);
++  font-family: ui-sans-serif, system-ui, "Segoe UI", Arial, Helvetica, sans-serif;
++  -webkit-font-smoothing: antialiased;
++}
++
++body:before {
++  content: "";
++  position: fixed;
++  inset: 0;
++  z-index: -1;
++  pointer-events: none;
++  opacity: .16;
++  background-image: radial-gradient(#123c2d .5px, transparent .5px);
++  background-size: 18px 18px;
++}
++
++a { text-decoration: none; color: inherit }
++img { max-width: 100% }
++button, input, select, textarea { font: inherit }
++
++/* ---------- layout primitives ---------- */
++.container { width: min(1160px, calc(100% - 2rem)); margin-inline: auto }
++.section { padding: 5rem 0 }
++.section.soft, .soft { background: rgba(255, 255, 255, .6) }
++.band { background: var(--forest); color: #fff }
++.grid { display: grid; gap: 1.25rem }
++.cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) }
++.prose { max-width: 760px }
++.prose h2 { margin-top: 2.5rem }
++.prose p, .prose li { line-height: 1.75; color: #4d5b53 }
++
++/* ---------- typography ---------- */
++.eyebrow {
++  text-transform: uppercase;
++  letter-spacing: .16em;
++  font-size: .74rem;
++  font-weight: 800;
++  color: var(--leaf);
++}
++.title {
++  font-size: clamp(2.4rem, 6vw, 5rem);
++  line-height: 1.03;
++  letter-spacing: -.03em;
++  margin: .7rem 0 1rem;
++}
++.section-title {
++  font-size: clamp(1.8rem, 4vw, 3rem);
++  line-height: 1.1;
++  letter-spacing: -.02em;
++  margin: .5rem 0;
++}
++.muted { color: #59675f; line-height: 1.7 }
++
++/* ---------- buttons ---------- */
++.btn {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: .45rem;
++  min-height: 3rem;
++  border: 1px solid transparent;
++  border-radius: 999px;
++  padding: .86rem 1.35rem;
++  font-weight: 800;
++  cursor: pointer;
++  transition: background-color .2s, color .2s, transform .2s, box-shadow .2s;
++}
++.btn:disabled { opacity: .55; cursor: not-allowed; transform: none }
++.btn-primary { background: var(--forest); color: #fff; box-shadow: var(--shadow-sm) }
++.btn-primary:not(:disabled):hover { background: var(--forest-2); transform: translateY(-1px); box-shadow: var(--shadow-md) }
++.btn-light { background: var(--paper); border-color: #cbd9cc; color: var(--forest) }
++.btn-light:not(:disabled):hover { background: #fff; border-color: var(--leaf) }
++.btn-accent { background: var(--lime); color: #14301f; box-shadow: var(--shadow-sm) }
++.btn-accent:not(:disabled):hover { background: var(--lime-bright); color: var(--forest); transform: translateY(-1px); box-shadow: var(--shadow-md) }
++
++/* High-contrast secondary buttons used inside the dark CTA banner */
++.cta-secondary {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: .45rem;
++  min-height: 3rem;
++  border: 1px solid #fff;
++  border-radius: 9999px;
++  background: transparent;
++  color: #fff;
++  padding: .75rem 1.35rem;
++  font-weight: 700;
++  transition: background-color .2s, color .2s;
++}
++.cta-secondary:hover, .cta-secondary:focus-visible { background: #fff; color: var(--forest-2) }
++
++.cta-sms {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: .45rem;
++  min-height: 3rem;
++  border: 1px solid var(--lime);
++  border-radius: 9999px;
++  background: var(--lime);
++  color: var(--ink);
++  padding: .75rem 1.35rem;
++  font-weight: 700;
++  transition: background-color .2s, color .2s;
++}
++.cta-sms:hover, .cta-sms:focus-visible { background: var(--lime-bright); color: var(--forest) }
++
++/* ---------- cards ---------- */
++.card {
++  border: 1px solid var(--line);
++  border-radius: 1.3rem;
++  padding: 1.5rem;
++  background: rgba(255, 255, 255, .92);
++  box-shadow: var(--shadow-sm);
++}
++.card h3 { font-size: 1.3rem; margin: .7rem 0 }
++
++.steps { counter-reset: steps }
++.step:before {
++  counter-increment: steps;
++  content: "0" counter(steps);
++  display: block;
++  color: var(--leaf);
++  font-weight: 900;
++  margin-bottom: .75rem;
++}
++
++/* ---------- header / nav ---------- */
++.header {
++  position: sticky;
++  top: 0;
++  z-index: 50;
++  background: rgba(255, 253, 248, .92);
++  backdrop-filter: blur(12px);
++  border-bottom: 1px solid var(--line);
++}
++.nav { min-height: 74px; display: flex; align-items: center; gap: 1.2rem }
++.brand { font-weight: 800; font-size: 1.25rem; letter-spacing: -.01em; color: var(--forest); margin-right: auto }
++.brand span { color: var(--leaf) }
++.navlinks { display: flex; gap: 1.2rem; align-items: center; font-size: .9rem; font-weight: 700 }
++.navlinks a:hover { color: var(--leaf) }
++.mobile-menu { display: none }
++
++/* ---------- hero ---------- */
++.hero {
++  background:
++    radial-gradient(circle at 82% 18%, rgba(132, 204, 22, .35) 0, transparent 30%),
++    linear-gradient(135deg, #f8f5ed, #eef5ea);
++  overflow: hidden;
++}
++.hero-grid {
++  display: grid;
++  grid-template-columns: 1.1fr .9fr;
++  gap: 3rem;
++  align-items: center;
++  min-height: 620px;
++  padding: 5rem 0;
++}
++.hero-art {
++  min-height: 420px;
++  border-radius: 2rem;
++  background: linear-gradient(145deg, rgba(18, 60, 45, .12), rgba(18, 60, 45, .78)), url('/landscape-placeholder.svg') center/cover;
++  display: flex;
++  align-items: end;
++  padding: 2rem;
++  box-shadow: var(--shadow-lg);
++}
++.hero-note {
++  background: rgba(255, 255, 255, .95);
++  border: 1px solid rgba(255, 255, 255, .9);
++  border-radius: 1.2rem;
++  padding: 1.3rem;
++  max-width: 330px;
++  margin-left: auto;
++  box-shadow: var(--shadow-md);
++}
++.actions { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1.5rem }
++.trust { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-top: 2rem; font-size: .85rem; font-weight: 700 }
++
++/* ---------- content blocks ---------- */
++.area {
++  padding: 1rem 0;
++  border-bottom: 1px solid #d7ddd8;
++  display: flex;
++  justify-content: space-between;
++  transition: padding-inline .2s, color .2s;
++}
++.area:hover { padding-inline: .4rem; color: var(--leaf) }
++
++.cta {
++  background: linear-gradient(120deg, var(--forest), #275f43);
++  color: #fff;
++  border-radius: 2rem;
++  padding: clamp(2rem, 6vw, 4.5rem);
++  box-shadow: var(--shadow-lg);
++}
++.cta .section-title { color: #fff }
++
++.notice {
++  padding: 1rem;
++  border: 1px solid #d5e2d0;
++  background: #f1f6ee;
++  border-radius: .8rem;
++  margin: 1rem 0;
++}
++.empty {
++  text-align: center;
++  padding: 3rem 1rem;
++  border: 1px dashed #aab7ae;
++  border-radius: 1rem;
++  margin: 1rem 0;
++}
++
++/* ---------- forms ---------- */
++.field { display: grid; gap: .45rem; margin-bottom: 1rem }
++.field label { font-size: .88rem; font-weight: 800 }
++.input {
++  width: 100%;
++  padding: .85rem 1rem;
++  border: 1px solid #c5d2c6;
++  border-radius: .7rem;
++  background: #fff;
++}
++.input:focus { outline: 3px solid #b8d688; outline-offset: 1px }
++.field-error { color: #a32020; font-size: .82rem; font-weight: 700 }
++.form-error {
++  border: 1px solid #e0b4b4;
++  background: #fbf0f0;
++  color: #8a2020;
++  border-radius: .8rem;
++  padding: 1rem;
++  margin: 1rem 0;
++  font-weight: 600;
++}
++
++.progress { display: flex; gap: .35rem; margin: 0 0 1.75rem }
++.progress span { height: 6px; flex: 1; background: #d9dfda; border-radius: 9px }
++.progress .on { background: var(--lime) }
++
++.review-list { display: grid; gap: .6rem; margin: 1.25rem 0 0 }
++.review-list dt { font-size: .76rem; text-transform: uppercase; letter-spacing: .09em; color: #59675f; font-weight: 800 }
++.review-list dd { margin: 0 0 .6rem; font-weight: 700 }
++
++/* ---------- gallery ---------- */
++.gallery-intro { max-width: 620px; margin-bottom: 2rem }
++.gallery-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1rem }
++.gallery-photo {
++  grid-column: span 4;
++  margin: 0;
++  background: #fff;
++  border: 1px solid var(--line);
++  padding: .55rem;
++  box-shadow: var(--shadow-sm);
++}
++.gallery-photo:nth-child(2) { transform: translateY(2rem) }
++.gallery-photo img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover }
++.gallery-photo figcaption { padding: .8rem .5rem .5rem; font-weight: 700 }
++.upload-form { margin: 1rem 0 1.5rem; max-width: 760px }
++.upload-fields { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr }
++
++/* ---------- tables ---------- */
++.table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 1rem; overflow: hidden; box-shadow: var(--shadow-sm) }
++.table th, .table td { text-align: left; padding: .8rem; border-bottom: 1px solid var(--line) }
++.table th { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: #59675f }
++
++.badge {
++  display: inline-block;
++  padding: .2rem .6rem;
++  border-radius: 999px;
++  font-size: .75rem;
++  font-weight: 800;
++  background: #e8f1e4;
++  color: var(--forest);
++}
++.badge.completed { background: #d8f5d0 }
++.badge.cancelled { background: #f6dede; color: #8a2020 }
++
++/* ---------- footer ---------- */
++.footer { background: #0d2c22; color: #dfe9e2; padding: 4rem 0 6rem }
++.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem }
++
++/* ---------- admin ---------- */
++.admin-shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; background: var(--cream) }
++.sidebar { display: grid; align-content: start; gap: .5rem; background: #102e24; color: #fff; padding: 2rem 1rem }
++.sidebar a { display: block; padding: .65rem; border-radius: .5rem }
++.sidebar a:hover { background: #214b3b }
++.admin-main { padding: 2rem; max-width: 1200px; width: 100%; overflow: auto }
++
++/* ---------- floating SMS widget (fallback styles) ---------- */
++.sms-widget { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 50 }
++.sms-widget__card { max-width: 260px }
++
++/* ---------- mobile sticky action bar ---------- */
++.sticky-actions { display: none }
++
++/* ---------- responsive ---------- */
++@media (max-width: 900px) {
++  .navlinks { display: none }
++  .mobile-menu { display: block }
++  .hero-grid { grid-template-columns: 1fr; min-height: auto; padding: 4rem 0 }
++  .hero-art { min-height: 300px }
++  .hero-note { margin-left: 0 }
++  .footer-grid, .admin-shell { grid-template-columns: 1fr }
++  .sidebar { display: flex; gap: .4rem; overflow: auto; padding: 1rem }
++  .sidebar a { white-space: nowrap }
++  .admin-main { padding: 1rem }
++}
++
++@media (max-width: 600px) {
++  .section { padding: 3.5rem 0 }
++  .header .btn-light { display: none }
++  .sticky-actions {
++    position: fixed;
++    bottom: 0;
++    left: 0;
++    z-index: 60;
++    display: grid;
++    grid-template-columns: repeat(3, 1fr);
++    background: #fff;
++    border-top: 1px solid #ddd;
++    width: 100%;
++    padding: .5rem;
++  }
++  .sticky-actions a { text-align: center; padding: .55rem; font-size: .8rem; font-weight: 800 }
++  .footer { padding-bottom: 7rem }
++  .gallery-photo, .upload-fields { grid-column: span 12; grid-template-columns: 1fr }
++  .gallery-photo:nth-child(2) { transform: none }
++  .title { font-size: clamp(2.2rem, 11vw, 3.6rem) }
++  .sms-widget { right: 1rem; bottom: 4.75rem }
++  .sms-widget__card { max-width: calc(100vw - 2rem) }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  * { scroll-behavior: auto !important; transition: none !important }
++}
+diff --git a/components/admin/CapacityForm.tsx b/components/admin/CapacityForm.tsx
+new file mode 100644
+index 0000000..5c6404d
+--- /dev/null
++++ b/components/admin/CapacityForm.tsx
+@@ -0,0 +1,78 @@
++"use client";
++
++import {useState, useTransition} from "react";
++import {saveCapacity, deleteCapacity} from "@/app/admin/actions";
++
++export function CapacityForm() {
++  const [day, setDay] = useState(new Date().toISOString().slice(0, 10));
++  const [maxJobs, setMaxJobs] = useState("4");
++  const [notes, setNotes] = useState("");
++  const [message, setMessage] = useState("");
++  const [ok, setOk] = useState(true);
++  const [pending, startTransition] = useTransition();
++
++  return (
++    <div className="card upload-form">
++      <div className="upload-fields">
++        <div className="field">
++          <label htmlFor="cap-day">Day</label>
++          <input id="cap-day" type="date" className="input" value={day} onChange={(e) => setDay(e.target.value)} />
++        </div>
++        <div className="field">
++          <label htmlFor="cap-max">Max jobs</label>
++          <input
++            id="cap-max"
++            type="number"
++            min={0}
++            className="input"
++            value={maxJobs}
++            onChange={(e) => setMaxJobs(e.target.value)}
++          />
++        </div>
++      </div>
++      <div className="field">
++        <label htmlFor="cap-notes">Notes</label>
++        <input id="cap-notes" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
++      </div>
++      <button
++        type="button"
++        className="btn btn-primary"
++        disabled={pending}
++        onClick={() =>
++          startTransition(async () => {
++            const result = await saveCapacity(day, Number(maxJobs), notes);
++            setOk(result.ok);
++            setMessage(result.message);
++          })
++        }
++      >
++        {pending ? "Saving…" : "Save capacity"}
++      </button>
++      {message && <p className={ok ? "muted" : "field-error"}>{message}</p>}
++    </div>
++  );
++}
++
++export function CapacityDelete({id}: {id: string}) {
++  const [pending, startTransition] = useTransition();
++  const [message, setMessage] = useState("");
++
++  return (
++    <>
++      <button
++        type="button"
++        className="btn btn-light"
++        disabled={pending}
++        onClick={() =>
++          startTransition(async () => {
++            const result = await deleteCapacity(id);
++            if (!result.ok) setMessage(result.message);
++          })
++        }
++      >
++        Remove
++      </button>
++      {message && <span className="field-error">{message}</span>}
++    </>
++  );
++}
+diff --git a/components/admin/LeadStatusSelect.tsx b/components/admin/LeadStatusSelect.tsx
+new file mode 100644
+index 0000000..01088a8
+--- /dev/null
++++ b/components/admin/LeadStatusSelect.tsx
+@@ -0,0 +1,45 @@
++"use client";
++
++import {useState, useTransition} from "react";
++import {updateLeadStatus} from "@/app/admin/actions";
++
++const OPTIONS = ["scheduled", "completed", "cancelled"] as const;
++
++export function LeadStatusSelect({id, status}: {id: string; status: string}) {
++  const [value, setValue] = useState(status);
++  const [message, setMessage] = useState("");
++  const [pending, startTransition] = useTransition();
++
++  return (
++    <span style={{display: "inline-flex", gap: ".5rem", alignItems: "center"}}>
++      <select
++        className="input"
++        style={{width: "auto", padding: ".4rem .6rem"}}
++        value={value}
++        disabled={pending}
++        aria-label="Lead status"
++        onChange={(e) => {
++          const nextValue = e.target.value;
++          const previous = value;
++          setValue(nextValue);
++          setMessage("");
++          startTransition(async () => {
++            const result = await updateLeadStatus(id, nextValue);
++            if (!result.ok) {
++              setValue(previous);
++              setMessage(result.message);
++            }
++          });
++        }}
++      >
++        {OPTIONS.map((o) => (
++          <option key={o} value={o}>
++            {o}
++          </option>
++        ))}
++      </select>
++      {pending && <span className="muted">…</span>}
++      {message && <span className="field-error">{message}</span>}
++    </span>
++  );
++}
+diff --git a/components/layout/SmsWidget.tsx b/components/layout/SmsWidget.tsx
+index abd1f59..e4a17aa 100644
+--- a/components/layout/SmsWidget.tsx
++++ b/components/layout/SmsWidget.tsx
+@@ -2,8 +2,8 @@
+ 
+ export function SmsWidget() {
+   return (
+-    <aside className="fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-3" aria-label="Text support">
+-      <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-xl ring-1 ring-slate-200">
++    <aside className="sms-widget fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-3" aria-label="Text support">
++      <div className="sms-widget__card flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-xl ring-1 ring-slate-200">
+         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-500 text-xs font-bold text-white" aria-hidden="true">NG</div>
+         <p>Hi there, have a question? Text us here.</p>
+       </div>
+diff --git a/components/quote/QuoteWizard.tsx b/components/quote/QuoteWizard.tsx
+index e9a46ef..2acac57 100644
+--- a/components/quote/QuoteWizard.tsx
++++ b/components/quote/QuoteWizard.tsx
+@@ -1,7 +1,426 @@
+-"use client";import dynamic from "next/dynamic";import {useCallback,useEffect,useState} from "react";import type {Locale,Service,Frequency} from "@/types";import type {MapValue} from "./LawnMap";import {calendarUrl,smsUrl,type BookingSummary} from "@/lib/integrations";import {BUSINESS} from "@/lib/config";
+-const LawnMap=dynamic(()=>import("./LawnMap"),{ssr:false,loading:()=> <div className="notice">Loading satellite map…</div>});type GeoResult={display_name:string;lat:string;lon:string};
+-const emptyGeo:GeoJSON.FeatureCollection={type:"FeatureCollection",features:[]};
+-export function QuoteWizard({locale,services}:{locale:Locale;services:Service[]}){const es=locale==="es";const [step,setStep]=useState(1),[query,setQuery]=useState(""),[results,setResults]=useState<GeoResult[]>([]),[loading,setLoading]=useState(false),[done,setDone]=useState<BookingSummary|null>(null);const [form,setForm]=useState({address:"",lat:0,lng:0,sqft:0,geometry:emptyGeo,service_id:"",frequency:"one_time" as Frequency,date:"",time:"",name:"",email:"",phone:"",payment:"cash",notes:"",website:""});
+-useEffect(()=>{if(query.trim().length<4||form.address===query)return;const c=new AbortController();const timer=setTimeout(async()=>{setLoading(true);try{const r=await fetch(`/api/geocode?q=${encodeURIComponent(query)}`,{signal:c.signal});setResults(r.ok?await r.json():[])}finally{setLoading(false)}},600);return()=>{clearTimeout(timer);c.abort()}},[query,form.address]);const measure=useCallback((v:MapValue)=>setForm(f=>({...f,sqft:v.sqft,geometry:v.geometry})),[]);const selected=services.find(s=>s.id===form.service_id);const next=()=>setStep(x=>Math.min(6,x+1)),back=()=>setStep(x=>Math.max(1,x-1));async function submit(){setLoading(true);const payload={full_name:form.name,email:form.email,phone:form.phone,property_address:form.address,latitude:form.lat,longitude:form.lng,lawn_sqft:form.sqft,lawn_geometry:form.geometry,service_id:form.service_id,requested_date:form.date,requested_time:form.time,frequency:form.frequency,notes:form.notes,payment_method:form.payment,website:form.website};const r=await fetch("/api/leads",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});const body=await r.json();setLoading(false);if(!r.ok){alert(body.error||"Unable to save request");return}const summary={name:form.name,service:selected?.name_en||"Service",address:form.address,sqft:form.sqft,estimate:body.estimated_price,date:form.date,time:form.time,frequency:form.frequency,payment:form.payment};setDone(summary);setStep(7)}
+-if(done&&step===7)return <div className="card"><div className="eyebrow">{es?"Solicitud recibida":"Request received"}</div><h2 className="section-title">{es?"Gracias. Revisaremos los detalles.":"Thank you. We’ll review the details."}</h2><p>{es?"La solicitud fue guardada; el servicio aún requiere confirmación humana.":"Your request was saved; service still requires human confirmation."}</p><div className="actions"><a className="btn btn-primary" href={smsUrl(done)}>{es?"Enviar resumen por SMS":"Text request summary"}</a><a className="btn btn-light" target="_blank" rel="noreferrer" href={calendarUrl(done)}>{es?"Añadir a Google Calendar":"Add to Google Calendar"}</a><button className="btn btn-light" onClick={()=>navigator.clipboard.writeText(`${done.service} — ${done.address}`)}>{es?"Copiar detalles":"Copy details"}</button></div><p className="muted">SMS fallback: {BUSINESS.displayPhone}</p></div>;
+-return <div className="card"><div className="progress" aria-label={`Step ${step} of 6`}>{[1,2,3,4,5,6].map(n=><span className={n<=step?"on":""} key={n}/>)}</div>{step===1&&<div className="field"><label htmlFor="address">{es?"Dirección de la propiedad":"Property address"}</label><input id="address" className="input" value={query} onChange={e=>{setQuery(e.target.value);setForm(f=>({...f,address:""}))}} autoComplete="street-address" placeholder="123 Main St, Hutto, TX"/>{loading&&<span aria-live="polite">Searching…</span>}{results.map(r=><button className="input" key={`${r.lat}${r.lon}`} onClick={()=>{setForm(f=>({...f,address:r.display_name,lat:+r.lat,lng:+r.lon}));setQuery(r.display_name);setResults([])}}>{r.display_name}</button>)}</div>}{step===2&&<><h2>{es?"Medición satelital":"Satellite lawn measurement"}</h2>{form.lat?<LawnMap lat={form.lat} lng={form.lng} onChange={measure}/>:<p>Select an address first.</p>}<h3>{es?"ÁREA TOTAL":"TOTAL LAWN AREA"}: {Math.round(form.sqft).toLocaleString()} SQ FT</h3></>}{step===3&&<div className="field"><label>{es?"Servicio":"Service"}</label><select className="input" value={form.service_id} onChange={e=>setForm({...form,service_id:e.target.value})}><option value="">Select…</option>{services.map(s=><option value={s.id} key={s.id}>{es?s.name_es:s.name_en}</option>)}</select><label>{es?"Frecuencia":"Frequency"}</label><select className="input" value={form.frequency} onChange={e=>setForm({...form,frequency:e.target.value as Frequency})}><option value="one_time">{es?"Una vez":"One Time"}</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select><p className="notice">{es?"El precio se calcula con reglas administrativas. Si no hay una regla, recibirá una cotización personalizada.":"Pricing is calculated from admin-managed rules. If no rule matches, you’ll receive a custom quote."}</p></div>}{step===4&&<div className="grid cards"><div className="field"><label>Date</label><input type="date" min={new Date().toISOString().slice(0,10)} className="input" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></div><div className="field"><label>Preferred time</label><input type="time" className="input" value={form.time} onChange={e=>setForm({...form,time:e.target.value})}/></div></div>}{step===5&&<div className="grid"><input aria-hidden="true" tabIndex={-1} autoComplete="off" style={{position:"absolute",left:"-9999px"}} value={form.website} onChange={e=>setForm({...form,website:e.target.value})}/>{[["name","Full name","text"],["email","Email","email"],["phone","Phone","tel"]].map(([k,l,t])=><div className="field" key={k}><label>{l}</label><input required type={t} className="input" value={form[k as keyof typeof form] as string} onChange={e=>setForm({...form,[k]:e.target.value})}/></div>)}<div className="field"><label>Payment preference</label><select className="input" value={form.payment} onChange={e=>setForm({...form,payment:e.target.value})}><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div><div className="field"><label>Notes</label><textarea className="input" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></div></div>}{step===6&&<div><h2>{es?"Revise su solicitud":"Review Your Request"}</h2><dl><dt>Address</dt><dd>{form.address}</dd><dt>Lawn size</dt><dd>{Math.round(form.sqft).toLocaleString()} sq ft</dd><dt>Service</dt><dd>{selected?es?selected.name_es:selected.name_en:"—"}</dd><dt>Frequency</dt><dd>{form.frequency}</dd><dt>Date / Time</dt><dd>{form.date} {form.time}</dd><dt>Estimate</dt><dd>{es?"Se verificará al enviar":"Calculated securely on submission"}</dd><dt>Payment</dt><dd>{form.payment}</dd></dl></div>}<div className="actions" style={{marginTop:"2rem"}}>{step>1&&<button className="btn btn-light" onClick={back}>{es?"Atrás":"Back"}</button>}{step<6?<button className="btn btn-primary" disabled={(step===1&&!form.address)||(step===2&&!form.sqft)||(step===3&&!form.service_id)||(step===4&&(!form.date||!form.time))} onClick={next}>{es?"Continuar":"Continue"}</button>:<button className="btn btn-primary" disabled={loading} onClick={submit}>{es?"CONFIRMAR SOLICITUD":"CONFIRM REQUEST"}</button>}</div></div>}
++"use client";
++
++import dynamic from "next/dynamic";
++import {useCallback, useEffect, useState} from "react";
++import type {Locale, Service, Frequency} from "@/types";
++import type {MapValue} from "./LawnMap";
++import {calendarUrl, smsUrl, type BookingSummary} from "@/lib/integrations";
++import {BUSINESS} from "@/lib/config";
++
++const LawnMap = dynamic(() => import("./LawnMap"), {
++  ssr: false,
++  loading: () => <div className="notice">Loading satellite map…</div>,
++});
++
++type GeoResult = {display_name: string; lat: string; lon: string};
++
++const emptyGeo: GeoJSON.FeatureCollection = {type: "FeatureCollection", features: []};
++const STEPS = 6;
++
++export function QuoteWizard({locale, services}: {locale: Locale; services: Service[]}) {
++  const es = locale === "es";
++  const [step, setStep] = useState(1);
++  const [query, setQuery] = useState("");
++  const [results, setResults] = useState<GeoResult[]>([]);
++  const [searching, setSearching] = useState(false);
++  const [submitting, setSubmitting] = useState(false);
++  const [errors, setErrors] = useState<Record<string, string>>({});
++  const [formError, setFormError] = useState("");
++  const [done, setDone] = useState<BookingSummary | null>(null);
++
++  const [form, setForm] = useState({
++    address: "",
++    lat: 0,
++    lng: 0,
++    sqft: 0,
++    geometry: emptyGeo,
++    service_id: "",
++    frequency: "one_time" as Frequency,
++    date: "",
++    time: "",
++    name: "",
++    email: "",
++    phone: "",
++    payment: "cash",
++    notes: "",
++    website: "",
++  });
++
++  // Address autocomplete. Failure here is never fatal: the typed text is kept.
++  useEffect(() => {
++    if (query.trim().length < 4 || form.address === query) return;
++    const controller = new AbortController();
++    const timer = setTimeout(async () => {
++      setSearching(true);
++      try {
++        const r = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`, {signal: controller.signal});
++        setResults(r.ok ? await r.json() : []);
++      } catch {
++        setResults([]);
++      } finally {
++        setSearching(false);
++      }
++    }, 600);
++    return () => {
++      clearTimeout(timer);
++      controller.abort();
++    };
++  }, [query, form.address]);
++
++  const measure = useCallback((v: MapValue) => setForm((f) => ({...f, sqft: v.sqft, geometry: v.geometry})), []);
++
++  const selected = services.find((s) => s.id === form.service_id);
++  const next = () => setStep((x) => Math.min(STEPS, x + 1));
++  const back = () => setStep((x) => Math.max(1, x - 1));
++
++  /** Accept whatever the customer typed, even if OSM returned no coordinates. */
++  const acceptTypedAddress = () => {
++    setForm((f) => ({...f, address: query.trim()}));
++    setResults([]);
++  };
++
++  async function submit() {
++    setSubmitting(true);
++    setErrors({});
++    setFormError("");
++
++    const address = form.address || query.trim();
++    const payload = {
++      full_name: form.name,
++      email: form.email,
++      phone: form.phone,
++      property_address: address,
++      latitude: form.lat || null,
++      longitude: form.lng || null,
++      lawn_sqft: form.sqft,
++      lawn_geometry: form.geometry,
++      service_id: form.service_id,
++      requested_date: form.date,
++      requested_time: form.time,
++      frequency: form.frequency,
++      notes: form.notes,
++      payment_method: form.payment,
++      website: form.website,
++    };
++
++    try {
++      const r = await fetch("/api/leads", {
++        method: "POST",
++        headers: {"content-type": "application/json"},
++        body: JSON.stringify(payload),
++      });
++      const body = await r.json().catch(() => ({}));
++
++      if (!r.ok) {
++        setErrors(body.fields || {});
++        setFormError(
++          body.error ||
++            (es ? "No pudimos enviar la solicitud. Intente de nuevo." : "We could not send the request. Please try again.")
++        );
++        // Send the customer back to the step that owns the first failing field.
++        const first = Object.keys(body.fields || {})[0];
++        if (first === "property_address") setStep(1);
++        else if (first === "service_id") setStep(3);
++        else if (first === "full_name" || first === "phone" || first === "email") setStep(5);
++        return;
++      }
++
++      setDone({
++        name: form.name,
++        service: (es ? selected?.name_es : selected?.name_en) || "Service",
++        address,
++        sqft: form.sqft,
++        estimate: body.estimated_price,
++        date: form.date,
++        time: form.time,
++        frequency: form.frequency,
++        payment: form.payment,
++      });
++      setStep(7);
++    } catch {
++      setFormError(
++        es
++          ? `Problema de red. Llámenos al ${BUSINESS.displayPhone}.`
++          : `Network problem. Please call us at ${BUSINESS.displayPhone}.`
++      );
++    } finally {
++      setSubmitting(false);
++    }
++  }
++
++  if (done && step === 7) {
++    return (
++      <div className="card">
++        <div className="eyebrow">{es ? "Solicitud recibida" : "Request received"}</div>
++        <h2 className="section-title">{es ? "Gracias. Revisaremos los detalles." : "Thank you. We'll review the details."}</h2>
++        <p className="muted">
++          {es
++            ? "La solicitud fue guardada; el servicio aún requiere confirmación humana."
++            : "Your request was saved; service still requires human confirmation."}
++        </p>
++        <div className="actions">
++          <a className="btn btn-accent" href={smsUrl(done)}>{es ? "Enviar resumen por SMS" : "Text request summary"}</a>
++          <a className="btn btn-light" target="_blank" rel="noreferrer" href={calendarUrl(done)}>
++            {es ? "Añadir a Google Calendar" : "Add to Google Calendar"}
++          </a>
++          <button
++            className="btn btn-light"
++            onClick={() => navigator.clipboard?.writeText(`${done.service} — ${done.address}`)}
++          >
++            {es ? "Copiar detalles" : "Copy details"}
++          </button>
++        </div>
++        <p className="muted">SMS: {BUSINESS.displayPhone}</p>
++      </div>
++    );
++  }
++
++  const addressReady = Boolean(form.address || query.trim().length >= 5);
++
++  return (
++    <div className="card">
++      <div className="progress" aria-label={`Step ${step} of ${STEPS}`}>
++        {Array.from({length: STEPS}, (_, i) => (
++          <span className={i + 1 <= step ? "on" : ""} key={i} />
++        ))}
++      </div>
++
++      {formError && <div className="form-error" role="alert">{formError}</div>}
++
++      {step === 1 && (
++        <div className="field">
++          <label htmlFor="address">{es ? "Dirección de la propiedad" : "Property address"}</label>
++          <input
++            id="address"
++            className="input"
++            value={query}
++            onChange={(e) => {
++              setQuery(e.target.value);
++              setForm((f) => ({...f, address: "", lat: 0, lng: 0}));
++            }}
++            autoComplete="street-address"
++            placeholder="123 Main St, Hutto, TX"
++          />
++          {searching && <span aria-live="polite" className="muted">{es ? "Buscando…" : "Searching…"}</span>}
++          {results.map((r) => (
++            <button
++              type="button"
++              className="input"
++              key={`${r.lat}${r.lon}`}
++              onClick={() => {
++                setForm((f) => ({...f, address: r.display_name, lat: +r.lat, lng: +r.lon}));
++                setQuery(r.display_name);
++                setResults([]);
++              }}
++            >
++              {r.display_name}
++            </button>
++          ))}
++          {!searching && query.trim().length >= 5 && !form.address && (
++            <button type="button" className="btn btn-light" onClick={acceptTypedAddress}>
++              {es ? `Usar "${query.trim()}" tal como se escribió` : `Use "${query.trim()}" as typed`}
++            </button>
++          )}
++          {errors.property_address && <span className="field-error">{errors.property_address}</span>}
++          <p className="muted">
++            {es
++              ? "Si no encontramos su dirección en el mapa, puede continuar con el texto escrito."
++              : "If we can't find your address on the map, you can continue with the address as typed."}
++          </p>
++        </div>
++      )}
++
++      {step === 2 && (
++        <>
++          <h2 className="section-title">{es ? "Medición satelital" : "Satellite lawn measurement"}</h2>
++          {form.lat ? (
++            <LawnMap lat={form.lat} lng={form.lng} onChange={measure} />
++          ) : (
++            <div className="notice">
++              {es
++                ? "No tenemos coordenadas para esta dirección, así que la medición satelital no está disponible. Puede continuar y la mediremos en sitio."
++                : "We don't have coordinates for this address, so satellite measuring isn't available. You can continue — we'll measure on site."}
++            </div>
++          )}
++          <h3>
++            {es ? "ÁREA TOTAL" : "TOTAL LAWN AREA"}: {Math.round(form.sqft).toLocaleString()} SQ FT
++          </h3>
++        </>
++      )}
++
++      {step === 3 && (
++        <div className="field">
++          <label htmlFor="service">{es ? "Servicio" : "Service"}</label>
++          <select
++            id="service"
++            className="input"
++            value={form.service_id}
++            onChange={(e) => setForm({...form, service_id: e.target.value})}
++          >
++            <option value="">{es ? "Seleccione…" : "Select…"}</option>
++            {services.map((s) => (
++              <option value={s.id} key={s.id}>
++                {es ? s.name_es : s.name_en}
++              </option>
++            ))}
++          </select>
++          {errors.service_id && <span className="field-error">{errors.service_id}</span>}
++          <label htmlFor="frequency">{es ? "Frecuencia" : "Frequency"}</label>
++          <select
++            id="frequency"
++            className="input"
++            value={form.frequency}
++            onChange={(e) => setForm({...form, frequency: e.target.value as Frequency})}
++          >
++            <option value="one_time">{es ? "Una vez" : "One time"}</option>
++            <option value="weekly">{es ? "Semanal" : "Weekly"}</option>
++            <option value="biweekly">{es ? "Quincenal" : "Biweekly"}</option>
++            <option value="monthly">{es ? "Mensual" : "Monthly"}</option>
++          </select>
++          <p className="notice">
++            {es
++              ? "El precio se calcula con reglas administrativas. Si no hay una regla, recibirá una cotización personalizada."
++              : "Pricing is calculated from admin-managed rules. If no rule matches, you'll receive a custom quote."}
++          </p>
++        </div>
++      )}
++
++      {step === 4 && (
++        <div className="grid cards">
++          <div className="field">
++            <label htmlFor="date">{es ? "Fecha preferida" : "Preferred date"}</label>
++            <input
++              id="date"
++              type="date"
++              min={new Date().toISOString().slice(0, 10)}
++              className="input"
++              value={form.date}
++              onChange={(e) => setForm({...form, date: e.target.value})}
++            />
++          </div>
++          <div className="field">
++            <label htmlFor="time">{es ? "Hora preferida" : "Preferred time"}</label>
++            <input
++              id="time"
++              type="time"
++              className="input"
++              value={form.time}
++              onChange={(e) => setForm({...form, time: e.target.value})}
++            />
++          </div>
++          <p className="muted">{es ? "Opcional — podemos coordinarlo después." : "Optional — we can coordinate later."}</p>
++        </div>
++      )}
++
++      {step === 5 && (
++        <div className="grid">
++          <input
++            aria-hidden="true"
++            tabIndex={-1}
++            autoComplete="off"
++            style={{position: "absolute", left: "-9999px"}}
++            value={form.website}
++            onChange={(e) => setForm({...form, website: e.target.value})}
++          />
++          {([
++            ["name", es ? "Nombre completo" : "Full name", "text", true],
++            ["email", es ? "Correo (opcional)" : "Email (optional)", "email", false],
++            ["phone", es ? "Teléfono" : "Phone", "tel", true],
++          ] as const).map(([k, label, type, required]) => {
++            const errKey = k === "name" ? "full_name" : k;
++            return (
++              <div className="field" key={k}>
++                <label htmlFor={k}>{label}</label>
++                <input
++                  id={k}
++                  required={required}
++                  type={type}
++                  className="input"
++                  value={form[k]}
++                  onChange={(e) => setForm({...form, [k]: e.target.value})}
++                />
++                {errors[errKey] && <span className="field-error">{errors[errKey]}</span>}
++              </div>
++            );
++          })}
++          <div className="field">
++            <label htmlFor="payment">{es ? "Preferencia de pago" : "Payment preference"}</label>
++            <select
++              id="payment"
++              className="input"
++              value={form.payment}
++              onChange={(e) => setForm({...form, payment: e.target.value})}
++            >
++              <option value="cash">{es ? "Efectivo" : "Cash"}</option>
++              <option value="transfer">{es ? "Transferencia" : "Transfer"}</option>
++            </select>
++          </div>
++          <div className="field">
++            <label htmlFor="notes">{es ? "Notas" : "Notes"}</label>
++            <textarea
++              id="notes"
++              className="input"
++              rows={4}
++              value={form.notes}
++              onChange={(e) => setForm({...form, notes: e.target.value})}
++            />
++          </div>
++        </div>
++      )}
++
++      {step === 6 && (
++        <div>
++          <h2 className="section-title">{es ? "Revise su solicitud" : "Review your request"}</h2>
++          <dl className="review-list">
++            <dt>{es ? "Dirección" : "Address"}</dt>
++            <dd>{form.address || query.trim() || "—"}</dd>
++            <dt>{es ? "Área de césped" : "Lawn size"}</dt>
++            <dd>{form.sqft ? `${Math.round(form.sqft).toLocaleString()} sq ft` : es ? "Se medirá en sitio" : "Measured on site"}</dd>
++            <dt>{es ? "Servicio" : "Service"}</dt>
++            <dd>{selected ? (es ? selected.name_es : selected.name_en) : "—"}</dd>
++            <dt>{es ? "Frecuencia" : "Frequency"}</dt>
++            <dd>{form.frequency}</dd>
++            <dt>{es ? "Fecha / hora" : "Date / time"}</dt>
++            <dd>{form.date || form.time ? `${form.date} ${form.time}`.trim() : es ? "Flexible" : "Flexible"}</dd>
++            <dt>{es ? "Estimado" : "Estimate"}</dt>
++            <dd>{es ? "Se verificará al enviar" : "Calculated securely on submission"}</dd>
++            <dt>{es ? "Pago" : "Payment"}</dt>
++            <dd>{form.payment}</dd>
++          </dl>
++          {Object.keys(errors).length > 0 && (
++            <ul className="field-error">
++              {Object.entries(errors).map(([k, v]) => (
++                <li key={k}>{`${k}: ${v}`}</li>
++              ))}
++            </ul>
++          )}
++        </div>
++      )}
++
++      <div className="actions" style={{marginTop: "2rem"}}>
++        {step > 1 && (
++          <button type="button" className="btn btn-light" onClick={back}>
++            {es ? "Atrás" : "Back"}
++          </button>
++        )}
++        {step < STEPS ? (
++          <button
++            type="button"
++            className="btn btn-primary"
++            disabled={(step === 1 && !addressReady) || (step === 3 && !form.service_id)}
++            onClick={() => {
++              if (step === 1 && !form.address) acceptTypedAddress();
++              next();
++            }}
++          >
++            {es ? "Continuar" : "Continue"}
++          </button>
++        ) : (
++          <button type="button" className="btn btn-accent" disabled={submitting} onClick={submit}>
++            {submitting ? (es ? "Enviando…" : "Sending…") : es ? "CONFIRMAR SOLICITUD" : "CONFIRM REQUEST"}
++          </button>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/lib/lead-schema.test.ts b/lib/lead-schema.test.ts
+new file mode 100644
+index 0000000..5ab5914
+--- /dev/null
++++ b/lib/lead-schema.test.ts
+@@ -0,0 +1,40 @@
++import {describe, expect, it} from "vitest";
++import {leadSchema} from "./validation";
++
++const minimum = {
++  full_name: "Jane Doe",
++  phone: "(737) 314-4215",
++  property_address: "1 Main St, Hutto, TX",
++  service_id: "1",
++};
++
++describe("lead schema is not a submission blocker", () => {
++  it("accepts a lead with only the four essential fields", () => {
++    const parsed = leadSchema.safeParse(minimum);
++    expect(parsed.success).toBe(true);
++  });
++
++  it("accepts a non-uuid service id from the offline fallback catalogue", () => {
++    expect(leadSchema.safeParse({...minimum, service_id: "lawn-mowing"}).success).toBe(true);
++  });
++
++  it("nulls out missing or out-of-range coordinates instead of failing", () => {
++    const parsed = leadSchema.parse({...minimum, latitude: 0, longitude: 0});
++    expect(parsed.latitude).toBeNull();
++    expect(parsed.longitude).toBeNull();
++  });
++
++  it("defaults every optional property question", () => {
++    const parsed = leadSchema.parse(minimum);
++    expect(parsed.lawn_sqft).toBe(0);
++    expect(parsed.frequency).toBe("one_time");
++    expect(parsed.payment_method).toBe("cash");
++    expect(parsed.is_corner_lot).toBe(false);
++    expect(parsed.optional_services).toEqual([]);
++    expect(parsed.lawn_geometry).toEqual({type: "FeatureCollection", features: []});
++  });
++
++  it("still rejects a request with no name, phone, address or service", () => {
++    expect(leadSchema.safeParse({}).success).toBe(false);
++  });
++});
+diff --git a/lib/validation.ts b/lib/validation.ts
+index 2990950..9f75bd4 100644
+--- a/lib/validation.ts
++++ b/lib/validation.ts
+@@ -1,3 +1,97 @@
+ import {z} from "zod";
+-export const leadSchema=z.object({full_name:z.string().trim().min(2).max(100),email:z.string().email().max(254),phone:z.string().regex(/^[+()\-\s\d]{10,20}$/),property_address:z.string().trim().min(8).max(300),latitude:z.number().min(25).max(37),longitude:z.number().min(-107).max(-93),lawn_sqft:z.number().positive().max(5000000),lawn_geometry:z.object({type:z.literal("FeatureCollection"),features:z.array(z.unknown()).max(50)}),service_id:z.string().uuid(),requested_date:z.string().date(),requested_time:z.string().regex(/^\d{2}:\d{2}$/),frequency:z.enum(["one_time","weekly","biweekly","monthly"]),waste_handling:z.string().max(100).optional(),notes:z.string().max(1500).optional(),payment_method:z.enum(["cash","transfer"]),website:z.string().max(0).optional()});
+-export const normalizePhone=(x:string)=>x.replace(/\D/g,"").slice(-10);export const normalizeEmail=(x:string)=>x.trim().toLowerCase();
++
++/**
++ * Lead schema.
++ *
++ * Only four things are genuinely required to open a request: a name, a way to
++ * reach the customer (phone), an address, and a service. Everything else is
++ * optional with a safe default, so a missing geocode result or an unanswered
++ * secondary question can never block the submission on the final step.
++ */
++
++const optionalString = (max: number) =>
++  z.preprocess(
++    (v) => (typeof v === "string" ? v.trim() : v === null || v === undefined ? "" : String(v)),
++    z.string().max(max)
++  ).optional().default("");
++
++const optionalBool = z.coerce.boolean().optional().default(false);
++
++/** Latitude/longitude are a convenience, never a gate. Out-of-range or missing => null. */
++const coordinate = (min: number, max: number) =>
++  z.preprocess((v) => {
++    const n = typeof v === "string" ? Number(v) : v;
++    if (typeof n !== "number" || !Number.isFinite(n) || n === 0 || n < min || n > max) return null;
++    return n;
++  }, z.number().nullable()).default(null);
++
++export const featureCollection = z.object({
++  type: z.literal("FeatureCollection"),
++  features: z.array(z.unknown()).max(50),
++});
++
++export const leadSchema = z.object({
++  // --- required ---
++  full_name: z.string().trim().min(2, "Enter the full name").max(100),
++  phone: z.string().trim().regex(/^[+()\-\s\d]{10,20}$/, "Enter a valid phone number"),
++  property_address: z.string().trim().min(5, "Enter the property address").max(300),
++  service_id: z.string().trim().min(1, "Choose a service"),
++
++  // --- optional, always defaulted ---
++  first_name: optionalString(60),
++  last_name: optionalString(60),
++  email: z.preprocess(
++    (v) => (typeof v === "string" ? v.trim() : ""),
++    z.union([z.string().email().max(254), z.literal("")])
++  ).optional().default(""),
++  postal_code: optionalString(12),
++  latitude: coordinate(25, 37),
++  longitude: coordinate(-107, -93),
++  lawn_sqft: z.coerce.number().min(0).max(5_000_000).optional().default(0),
++  lawn_geometry: featureCollection.optional().default({type: "FeatureCollection", features: []}),
++  requested_date: optionalString(20),
++  requested_time: z.preprocess(
++    (v) => (typeof v === "string" ? v.trim() : ""),
++    z.union([z.string().regex(/^\d{2}:\d{2}$/), z.literal("")])
++  ).optional().default(""),
++  frequency: z.enum(["one_time", "weekly", "biweekly", "monthly"]).optional().default("one_time"),
++  waste_handling: optionalString(100),
++  notes: optionalString(1500),
++  special_requests: optionalString(1500),
++  referral_source: optionalString(120),
++  payment_method: z.enum(["cash", "transfer"]).optional().default("cash"),
++  payment_preference: optionalString(40),
++  property_occupancy: optionalString(40),
++  mow_area: optionalString(60),
++  optional_services: z.array(z.string().max(80)).max(30).optional().default([]),
++
++  // --- yes/no property questions: never blocking ---
++  is_corner_lot: optionalBool,
++  grass_over_6in: optionalBool,
++  grass_over_12in: optionalBool,
++  community_gate: optionalBool,
++  backyard_gate: optionalBool,
++  flower_beds: optionalBool,
++  pets_in_backyard: optionalBool,
++  white_vinyl_fence: optionalBool,
++  above_ground_pool: optionalBool,
++  trampoline: optionalBool,
++
++  // honeypot
++  website: z.string().max(0).optional(),
++});
++
++export type LeadInput = z.infer<typeof leadSchema>;
++
++/** Flattens a ZodError into `{ field: message }` so the UI can highlight fields. */
++export function fieldErrors(error: z.ZodError) {
++  const out: Record<string, string> = {};
++  for (const issue of error.issues) {
++    const key = issue.path.join(".") || "form";
++    if (!out[key]) out[key] = issue.message;
++  }
++  return out;
++}
++
++export const normalizePhone = (x: string) => x.replace(/\D/g, "").slice(-10);
++export const normalizeEmail = (x: string) => x.trim().toLowerCase();
+diff --git a/supabase/migrations/002_lead_details_and_schedule_capacity.sql b/supabase/migrations/002_lead_details_and_schedule_capacity.sql
+new file mode 100644
+index 0000000..151e787
+--- /dev/null
++++ b/supabase/migrations/002_lead_details_and_schedule_capacity.sql
+@@ -0,0 +1,29 @@
++-- Extra, non-blocking answers from the quote funnel (corner lot, gates, pets,
++-- optional services, referral source, …). Kept as jsonb so new funnel questions
++-- never require a schema change or break an insert.
++alter table public.leads add column if not exists details jsonb not null default '{}'::jsonb;
++
++-- Daily capacity used by the admin dashboard to cap how many jobs can be
++-- scheduled per day.
++create table if not exists public.schedule_capacity(
++  id uuid primary key default gen_random_uuid(),
++  day date not null unique,
++  max_jobs integer not null default 0 check (max_jobs >= 0),
++  booked_jobs integer not null default 0 check (booked_jobs >= 0),
++  notes text,
++  created_at timestamptz not null default now(),
++  updated_at timestamptz not null default now()
++);
++
++create index if not exists schedule_capacity_day_idx on public.schedule_capacity(day);
++
++drop trigger if exists schedule_capacity_updated on public.schedule_capacity;
++create trigger schedule_capacity_updated
++  before update on public.schedule_capacity
++  for each row execute function public.touch_updated_at();
++
++alter table public.schedule_capacity enable row level security;
++
++drop policy if exists "admins schedule capacity" on public.schedule_capacity;
++create policy "admins schedule capacity" on public.schedule_capacity
++  for all using (public.is_admin()) with check (public.is_admin());
+-- 
+2.43.0
+
+
+From 4d090254793294d12d73d70713b7937fe1c98d1f Mon Sep 17 00:00:00 2001
+From: Nieto Green Care <dev@nietogreencare.com>
+Date: Thu, 17 Sep 2026 08:54:02 +0000
+Subject: [PATCH 2/2] style: adopt vibrant Mow Managers color scheme and refine
+ UI
+
+---
+ app/[locale]/page.tsx           |  2 +-
+ app/globals.css                 | 73 +++++++++++++++++++--------------
+ components/layout/Header.tsx    |  2 +-
+ components/layout/SmsWidget.tsx |  6 +--
+ 4 files changed, 48 insertions(+), 35 deletions(-)
+
+diff --git a/app/[locale]/page.tsx b/app/[locale]/page.tsx
+index 364fbe9..fc5bc36 100644
+--- a/app/[locale]/page.tsx
++++ b/app/[locale]/page.tsx
+@@ -1,2 +1,2 @@
+ import Link from "next/link";import {notFound} from "next/navigation";import {getServices} from "@/lib/services";import {areas} from "@/lib/data";import {isLocale} from "@/lib/i18n";import {ServiceCards} from "@/components/ServiceCards";import {JsonLd} from "@/components/JsonLd";import {APP_URL,BUSINESS} from "@/lib/config";
+-export default async function Home({params}:{params:Promise<{locale:string}>}){const {locale}=await params;if(!isLocale(locale))notFound();const es=locale==="es",services=await getServices();return <><JsonLd data={{"@context":"https://schema.org","@type":"LocalBusiness",name:BUSINESS.name,url:`${APP_URL}/${locale}`,telephone:BUSINESS.displayPhone,email:BUSINESS.email,areaServed:areas.map(a=>`${a.name}, TX`)}}/><section className="hero"><div className="container hero-grid"><div><div className="eyebrow">{es?"Cuidado local • Centro de Texas":"Local care • Central Texas"}</div><h1 className="title">{es?"Césped bien cuidado. Servicio sin complicaciones.":"A better-kept lawn, without the runaround."}</h1><p className="muted" style={{fontSize:"1.15rem",maxWidth:620}}>{es?"Cuidado profesional de césped, paisajismo y mantenimiento con programación sencilla y comunicación clara.":"Professional lawn care, landscaping, and property maintenance with simple scheduling and clear communication."}</p><div className="actions"><Link className="btn btn-primary" href={`/${locale}/quote`}>{es?"Obtenga una cotización gratis":"Get a Free Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{es?"Llamar ahora":"Call Now"}</a></div><div className="trust"><span>✓ {es?"Servicio local":"Local service"}</span><span>✓ {es?"Opciones recurrentes":"Recurring options"}</span><span>✓ {es?"Comunicación clara":"Clear communication"}</span></div></div><div className="hero-art"><div className="hero-note"><strong>{es?"Áreas confirmadas":"Confirmed service areas"}</strong><p className="muted">{areas.map(a=>a.name).join(" • ")}</p></div></div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Servicios":"Services"}</div><h2 className="section-title">{es?"Cuidado diseñado para su propiedad":"Property care built around your needs"}</h2><p className="muted">{es?"Desde el mantenimiento recurrente hasta mejoras específicas.":"From recurring upkeep to focused landscape improvements."}</p><ServiceCards services={services.filter(s=>s.featured)} locale={locale}/></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Cómo funciona":"How it works"}</div><h2 className="section-title">{es?"De su dirección a una solicitud clara":"From your address to a clear request"}</h2><div className="grid cards steps">{(es?["Ingrese su propiedad","Mida su césped","Obtenga su estimado","Elija su servicio","Programe su solicitud"]:["Enter your property","Measure your lawn","Get your estimate","Choose your service","Schedule your request"]).map(x=><div className="card step" key={x}><strong>{x}</strong></div>)}</div></div></section><section className="section"><div className="container cta"><div className="eyebrow" style={{color:"#d7ed9c"}}>Satellite quote</div><h2 className="section-title">{es?"Mida su césped y obtenga un estimado":"Measure Your Lawn & Get an Estimate"}</h2><p>{es?"Busque su dirección, dibuje las áreas de césped y envíe una solicitud detallada.":"Find your address, draw your lawn areas, and send a detailed service request."}</p><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Comenzar":"Start measuring"}</Link></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Por qué nosotros":"Why Nieto Green Care"}</div><div className="grid cards">{(es?[["Servicio confiable","Solicitudes claras y seguimiento humano."],["Atención al detalle","Bordes, limpieza y acabados importan."],["Programación sencilla","Opciones únicas y recurrentes para su rutina."]]:[["Dependable service","Clear requests and human follow-up."],["Attention to detail","Edges, cleanup, and the final finish matter."],["Easy scheduling","One-time and recurring options built around your routine."]]).map(([a,b])=><div className="card" key={a}><h3>{a}</h3><p className="muted">{b}</p></div>)}</div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Áreas de servicio":"Service areas"}</div><h2 className="section-title">{es?"Cuidado local en comunidades confirmadas":"Local care across confirmed communities"}</h2>{areas.map(a=><Link className="area" key={a.slug} href={`/${locale}/service-areas/${a.slug}`}><span>{a.name}, TX</span><span>→</span></Link>)}</div></section><section className="section"><div className="container empty"><h2>{es?"Galería lista para trabajo real":"A gallery reserved for real work"}</h2><p className="muted">{es?"Las fotografías se publicarán después de ser aprobadas por Nieto Green Care.":"Approved Nieto Green Care project photos will appear here as they are published."}</p></div></section><section className="section"><div className="container cta"><h2 className="section-title">{es?"¿Listo para hablar de su propiedad?":"Ready to talk about your property?"}</h2><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Cotizar":"Get Quote"}</Link><a className="cta-secondary" href={`tel:${BUSINESS.phone}`} aria-label={es?`Llamar a ${BUSINESS.displayPhone}`:`Call ${BUSINESS.displayPhone}`}>{es?"Llamar":"Call Us"} · {BUSINESS.displayPhone}</a><a className="cta-sms" href={`sms:${BUSINESS.phone}`} aria-label={es?"Enviar mensaje de texto":"Text us"}>{es?"Enviar Mensaje":"Text Us"}</a></div></div></section></>}
++export default async function Home({params}:{params:Promise<{locale:string}>}){const {locale}=await params;if(!isLocale(locale))notFound();const es=locale==="es",services=await getServices();return <><JsonLd data={{"@context":"https://schema.org","@type":"LocalBusiness",name:BUSINESS.name,url:`${APP_URL}/${locale}`,telephone:BUSINESS.displayPhone,email:BUSINESS.email,areaServed:areas.map(a=>`${a.name}, TX`)}}/><section className="hero"><div className="container hero-grid"><div><div className="eyebrow">{es?"Cuidado local • Centro de Texas":"Local care • Central Texas"}</div><h1 className="title">{es?"Césped bien cuidado. Servicio sin complicaciones.":"A better-kept lawn, without the runaround."}</h1><p className="muted" style={{fontSize:"1.15rem",maxWidth:620}}>{es?"Cuidado profesional de césped, paisajismo y mantenimiento con programación sencilla y comunicación clara.":"Professional lawn care, landscaping, and property maintenance with simple scheduling and clear communication."}</p><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Obtenga una cotización gratis":"Get a Free Quote"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{es?"Llamar ahora":"Call Now"}</a></div><div className="trust"><span>✓ {es?"Servicio local":"Local service"}</span><span>✓ {es?"Opciones recurrentes":"Recurring options"}</span><span>✓ {es?"Comunicación clara":"Clear communication"}</span></div></div><div className="hero-art"><div className="hero-note"><strong>{es?"Áreas confirmadas":"Confirmed service areas"}</strong><p className="muted">{areas.map(a=>a.name).join(" • ")}</p></div></div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Servicios":"Services"}</div><h2 className="section-title">{es?"Cuidado diseñado para su propiedad":"Property care built around your needs"}</h2><p className="muted">{es?"Desde el mantenimiento recurrente hasta mejoras específicas.":"From recurring upkeep to focused landscape improvements."}</p><ServiceCards services={services.filter(s=>s.featured)} locale={locale}/></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Cómo funciona":"How it works"}</div><h2 className="section-title">{es?"De su dirección a una solicitud clara":"From your address to a clear request"}</h2><div className="grid cards steps">{(es?["Ingrese su propiedad","Mida su césped","Obtenga su estimado","Elija su servicio","Programe su solicitud"]:["Enter your property","Measure your lawn","Get your estimate","Choose your service","Schedule your request"]).map(x=><div className="card step" key={x}><strong>{x}</strong></div>)}</div></div></section><section className="section"><div className="container cta"><div className="eyebrow" style={{color:"#84CC16"}}>Satellite quote</div><h2 className="section-title">{es?"Mida su césped y obtenga un estimado":"Measure Your Lawn & Get an Estimate"}</h2><p>{es?"Busque su dirección, dibuje las áreas de césped y envíe una solicitud detallada.":"Find your address, draw your lawn areas, and send a detailed service request."}</p><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Comenzar":"Start measuring"}</Link></div></section><section className="section soft"><div className="container"><div className="eyebrow">{es?"Por qué nosotros":"Why Nieto Green Care"}</div><div className="grid cards">{(es?[["Servicio confiable","Solicitudes claras y seguimiento humano."],["Atención al detalle","Bordes, limpieza y acabados importan."],["Programación sencilla","Opciones únicas y recurrentes para su rutina."]]:[["Dependable service","Clear requests and human follow-up."],["Attention to detail","Edges, cleanup, and the final finish matter."],["Easy scheduling","One-time and recurring options built around your routine."]]).map(([a,b])=><div className="card" key={a}><h3>{a}</h3><p className="muted">{b}</p></div>)}</div></div></section><section className="section"><div className="container"><div className="eyebrow">{es?"Áreas de servicio":"Service areas"}</div><h2 className="section-title">{es?"Cuidado local en comunidades confirmadas":"Local care across confirmed communities"}</h2>{areas.map(a=><Link className="area" key={a.slug} href={`/${locale}/service-areas/${a.slug}`}><span>{a.name}, TX</span><span>→</span></Link>)}</div></section><section className="section"><div className="container empty"><h2>{es?"Galería lista para trabajo real":"A gallery reserved for real work"}</h2><p className="muted">{es?"Las fotografías se publicarán después de ser aprobadas por Nieto Green Care.":"Approved Nieto Green Care project photos will appear here as they are published."}</p></div></section><section className="section"><div className="container cta"><h2 className="section-title">{es?"¿Listo para hablar de su propiedad?":"Ready to talk about your property?"}</h2><div className="actions"><Link className="btn btn-accent" href={`/${locale}/quote`}>{es?"Cotizar":"Get Quote"}</Link><a className="cta-secondary" href={`tel:${BUSINESS.phone}`} aria-label={es?`Llamar a ${BUSINESS.displayPhone}`:`Call ${BUSINESS.displayPhone}`}>{es?"Llamar":"Call Us"} · {BUSINESS.displayPhone}</a><a className="cta-sms" href={`sms:${BUSINESS.phone}`} aria-label={es?"Enviar mensaje de texto":"Text us"}>{es?"Enviar Mensaje":"Text Us"}</a></div></div></section></>}
+diff --git a/app/globals.css b/app/globals.css
+index b53efa1..f6cd93b 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -7,19 +7,26 @@
+    ========================================================================== */
+ 
+ :root {
+-  --forest: #123c2d;
+-  --forest-2: #1b4d3e;
++  /* Mow Managers palette
++     conversion accents: lime #84cc16 / emerald #00e676
++     contrast surfaces:  forest #1b4d3e / deep forest #0f2e25 */
++  --forest: #1b4d3e;
++  --forest-deep: #0f2e25;
++  --forest-hover: #24634f;
+   --leaf: #347a4d;
+   --lime: #84cc16;
+   --lime-bright: #00e676;
++  --lime-soft: #eaf7cf;
+   --sand: #d7ed9c;
+   --cream: #f6f3ea;
+   --ink: #17221c;
+   --line: #dfe7df;
+   --paper: #fffdf8;
+-  --shadow-sm: 0 6px 18px rgba(20, 50, 35, .08);
+-  --shadow-md: 0 14px 40px rgba(20, 50, 35, .12);
+-  --shadow-lg: 0 24px 60px rgba(20, 50, 35, .18);
++  --shadow-sm: 0 6px 18px rgba(15, 46, 37, .08);
++  --shadow-md: 0 14px 40px rgba(15, 46, 37, .14);
++  --shadow-lg: 0 24px 60px rgba(15, 46, 37, .2);
++  /* shadow-xl with a lime tint, the equivalent of shadow-lime-500/20 */
++  --shadow-lime: 0 20px 45px -12px rgba(132, 204, 22, .45), 0 8px 20px rgba(15, 46, 37, .12);
+ }
+ 
+ * { box-sizing: border-box }
+@@ -40,7 +47,7 @@ body:before {
+   z-index: -1;
+   pointer-events: none;
+   opacity: .16;
+-  background-image: radial-gradient(#123c2d .5px, transparent .5px);
++  background-image: radial-gradient(#1b4d3e .5px, transparent .5px);
+   background-size: 18px 18px;
+ }
+ 
+@@ -97,11 +104,11 @@ button, input, select, textarea { font: inherit }
+ }
+ .btn:disabled { opacity: .55; cursor: not-allowed; transform: none }
+ .btn-primary { background: var(--forest); color: #fff; box-shadow: var(--shadow-sm) }
+-.btn-primary:not(:disabled):hover { background: var(--forest-2); transform: translateY(-1px); box-shadow: var(--shadow-md) }
+-.btn-light { background: var(--paper); border-color: #cbd9cc; color: var(--forest) }
++.btn-primary:not(:disabled):hover { background: var(--forest-hover); transform: translateY(-1px); box-shadow: var(--shadow-md) }
++.btn-light { background: var(--paper); border-color: #cbd9cc; color: var(--forest-deep) }
+ .btn-light:not(:disabled):hover { background: #fff; border-color: var(--leaf) }
+-.btn-accent { background: var(--lime); color: #14301f; box-shadow: var(--shadow-sm) }
+-.btn-accent:not(:disabled):hover { background: var(--lime-bright); color: var(--forest); transform: translateY(-1px); box-shadow: var(--shadow-md) }
++.btn-accent { background: var(--lime); color: var(--forest-deep); box-shadow: var(--shadow-lime) }
++.btn-accent:not(:disabled):hover { background: var(--lime-bright); color: var(--forest-deep); transform: translateY(-2px); box-shadow: var(--shadow-lime) }
+ 
+ /* High-contrast secondary buttons used inside the dark CTA banner */
+ .cta-secondary {
+@@ -118,7 +125,7 @@ button, input, select, textarea { font: inherit }
+   font-weight: 700;
+   transition: background-color .2s, color .2s;
+ }
+-.cta-secondary:hover, .cta-secondary:focus-visible { background: #fff; color: var(--forest-2) }
++.cta-secondary:hover, .cta-secondary:focus-visible { background: #fff; color: var(--forest) }
+ 
+ .cta-sms {
+   display: inline-flex;
+@@ -134,16 +141,19 @@ button, input, select, textarea { font: inherit }
+   font-weight: 700;
+   transition: background-color .2s, color .2s;
+ }
+-.cta-sms:hover, .cta-sms:focus-visible { background: var(--lime-bright); color: var(--forest) }
++.cta-sms { box-shadow: var(--shadow-lime) }
++.cta-sms:hover, .cta-sms:focus-visible { background: var(--lime-bright); color: var(--forest-deep) }
+ 
+ /* ---------- cards ---------- */
+ .card {
+   border: 1px solid var(--line);
+-  border-radius: 1.3rem;
+-  padding: 1.5rem;
+-  background: rgba(255, 255, 255, .92);
++  border-radius: 1.5rem;
++  padding: 1.6rem;
++  background: #fff;
+   box-shadow: var(--shadow-sm);
++  transition: transform .2s, box-shadow .2s, border-color .2s;
+ }
++.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: #c7dca0 }
+ .card h3 { font-size: 1.3rem; margin: .7rem 0 }
+ 
+ .steps { counter-reset: steps }
+@@ -175,7 +185,7 @@ button, input, select, textarea { font: inherit }
+ /* ---------- hero ---------- */
+ .hero {
+   background:
+-    radial-gradient(circle at 82% 18%, rgba(132, 204, 22, .35) 0, transparent 30%),
++    radial-gradient(circle at 82% 18%, rgba(132, 204, 22, .42) 0, transparent 32%),
+     linear-gradient(135deg, #f8f5ed, #eef5ea);
+   overflow: hidden;
+ }
+@@ -190,7 +200,7 @@ button, input, select, textarea { font: inherit }
+ .hero-art {
+   min-height: 420px;
+   border-radius: 2rem;
+-  background: linear-gradient(145deg, rgba(18, 60, 45, .12), rgba(18, 60, 45, .78)), url('/landscape-placeholder.svg') center/cover;
++  background: linear-gradient(145deg, rgba(27, 77, 62, .1), rgba(15, 46, 37, .8)), url('/landscape-placeholder.svg') center/cover;
+   display: flex;
+   align-items: end;
+   padding: 2rem;
+@@ -219,19 +229,21 @@ button, input, select, textarea { font: inherit }
+ .area:hover { padding-inline: .4rem; color: var(--leaf) }
+ 
+ .cta {
+-  background: linear-gradient(120deg, var(--forest), #275f43);
++  background: linear-gradient(120deg, var(--forest-deep), var(--forest) 55%, #24634f);
+   color: #fff;
+   border-radius: 2rem;
+   padding: clamp(2rem, 6vw, 4.5rem);
+   box-shadow: var(--shadow-lg);
+ }
++.cta .eyebrow { color: var(--sand) }
+ .cta .section-title { color: #fff }
+ 
+ .notice {
+-  padding: 1rem;
+-  border: 1px solid #d5e2d0;
+-  background: #f1f6ee;
+-  border-radius: .8rem;
++  padding: 1rem 1.15rem;
++  border: 1px solid #cfe4a6;
++  border-left: 4px solid var(--lime);
++  background: var(--lime-soft);
++  border-radius: .9rem;
+   margin: 1rem 0;
+ }
+ .empty {
+@@ -252,7 +264,7 @@ button, input, select, textarea { font: inherit }
+   border-radius: .7rem;
+   background: #fff;
+ }
+-.input:focus { outline: 3px solid #b8d688; outline-offset: 1px }
++.input:focus { outline: 3px solid var(--lime); outline-offset: 1px }
+ .field-error { color: #a32020; font-size: .82rem; font-weight: 700 }
+ .form-error {
+   border: 1px solid #e0b4b4;
+@@ -266,7 +278,7 @@ button, input, select, textarea { font: inherit }
+ 
+ .progress { display: flex; gap: .35rem; margin: 0 0 1.75rem }
+ .progress span { height: 6px; flex: 1; background: #d9dfda; border-radius: 9px }
+-.progress .on { background: var(--lime) }
++.progress .on { background: var(--lime); box-shadow: 0 0 0 1px rgba(132, 204, 22, .35) }
+ 
+ .review-list { display: grid; gap: .6rem; margin: 1.25rem 0 0 }
+ .review-list dt { font-size: .76rem; text-transform: uppercase; letter-spacing: .09em; color: #59675f; font-weight: 800 }
+@@ -300,21 +312,22 @@ button, input, select, textarea { font: inherit }
+   border-radius: 999px;
+   font-size: .75rem;
+   font-weight: 800;
+-  background: #e8f1e4;
+-  color: var(--forest);
++  background: var(--lime-soft);
++  color: var(--forest-deep);
+ }
+-.badge.completed { background: #d8f5d0 }
++.badge.completed { background: rgba(0, 230, 118, .22); color: var(--forest-deep) }
+ .badge.cancelled { background: #f6dede; color: #8a2020 }
+ 
+ /* ---------- footer ---------- */
+-.footer { background: #0d2c22; color: #dfe9e2; padding: 4rem 0 6rem }
++.footer { background: var(--forest-deep); color: #dfe9e2; padding: 4rem 0 6rem }
++.footer a:hover { color: var(--lime) }
+ .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2rem }
+ 
+ /* ---------- admin ---------- */
+ .admin-shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; background: var(--cream) }
+-.sidebar { display: grid; align-content: start; gap: .5rem; background: #102e24; color: #fff; padding: 2rem 1rem }
++.sidebar { display: grid; align-content: start; gap: .5rem; background: var(--forest-deep); color: #fff; padding: 2rem 1rem }
+ .sidebar a { display: block; padding: .65rem; border-radius: .5rem }
+-.sidebar a:hover { background: #214b3b }
++.sidebar a:hover { background: var(--forest); color: var(--lime) }
+ .admin-main { padding: 2rem; max-width: 1200px; width: 100%; overflow: auto }
+ 
+ /* ---------- floating SMS widget (fallback styles) ---------- */
+diff --git a/components/layout/Header.tsx b/components/layout/Header.tsx
+index ce84085..224d580 100644
+--- a/components/layout/Header.tsx
++++ b/components/layout/Header.tsx
+@@ -1,2 +1,2 @@
+ "use client";import Link from "next/link";import {useState} from "react";import type {Locale} from "@/types";import {t} from "@/lib/i18n";import {BUSINESS} from "@/lib/config";
+-export function Header({locale}: {locale:Locale}){const [open,setOpen]=useState(false);const x=t[locale],base=`/${locale}`;const links=[["",x.home],["/services",x.services],["/service-areas",x.areas],["/gallery",x.gallery],["/about",x.about],["/faq",x.faq],["/contact",x.contact]];return <><header className="header"><div className="container nav"><Link className="brand" href={base}>NIETO <span>GREEN CARE</span></Link><nav className="navlinks" aria-label="Main navigation">{links.map(([h,n])=><Link key={h} href={base+h}>{n}</Link>)}</nav><Link href={`/${locale==="en"?"es":"en"}`} aria-label="Change language">{locale==="en"?"ES":"EN"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{x.call}</a><Link className="btn btn-primary" href={`${base}/quote`}>{x.quote}</Link><button className="mobile-menu btn btn-light" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label="Menu">☰</button></div>{open&&<nav className="container grid" style={{paddingBottom:"1rem"}}>{links.map(([h,n])=><Link onClick={()=>setOpen(false)} key={h} href={base+h}>{n}</Link>)}</nav>}</header><div className="sticky-actions"><a href={`tel:${BUSINESS.phone}`}>{x.call}</a><a href={`sms:${BUSINESS.phone}`}>{x.text}</a><Link href={`${base}/quote`}>{x.quote}</Link></div></>}
++export function Header({locale}: {locale:Locale}){const [open,setOpen]=useState(false);const x=t[locale],base=`/${locale}`;const links=[["",x.home],["/services",x.services],["/service-areas",x.areas],["/gallery",x.gallery],["/about",x.about],["/faq",x.faq],["/contact",x.contact]];return <><header className="header"><div className="container nav"><Link className="brand" href={base}>NIETO <span>GREEN CARE</span></Link><nav className="navlinks" aria-label="Main navigation">{links.map(([h,n])=><Link key={h} href={base+h}>{n}</Link>)}</nav><Link href={`/${locale==="en"?"es":"en"}`} aria-label="Change language">{locale==="en"?"ES":"EN"}</Link><a className="btn btn-light" href={`tel:${BUSINESS.phone}`}>{x.call}</a><Link className="btn btn-accent" href={`${base}/quote`}>{x.quote}</Link><button className="mobile-menu btn btn-light" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label="Menu">☰</button></div>{open&&<nav className="container grid" style={{paddingBottom:"1rem"}}>{links.map(([h,n])=><Link onClick={()=>setOpen(false)} key={h} href={base+h}>{n}</Link>)}</nav>}</header><div className="sticky-actions"><a href={`tel:${BUSINESS.phone}`}>{x.call}</a><a href={`sms:${BUSINESS.phone}`}>{x.text}</a><Link href={`${base}/quote`}>{x.quote}</Link></div></>}
+diff --git a/components/layout/SmsWidget.tsx b/components/layout/SmsWidget.tsx
+index e4a17aa..5ab45fd 100644
+--- a/components/layout/SmsWidget.tsx
++++ b/components/layout/SmsWidget.tsx
+@@ -3,11 +3,11 @@
+ export function SmsWidget() {
+   return (
+     <aside className="sms-widget fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-3" aria-label="Text support">
+-      <div className="sms-widget__card flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-xl ring-1 ring-slate-200">
+-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-500 text-xs font-bold text-white" aria-hidden="true">NG</div>
++      <div className="sms-widget__card flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-xl ring-1 ring-lime-500/20">
++        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-500 text-xs font-bold text-[#0F2E25]" aria-hidden="true">NG</div>
+         <p>Hi there, have a question? Text us here.</p>
+       </div>
+-      <a className="inline-flex items-center gap-2 rounded-full bg-lime-500 px-5 py-3 font-bold text-slate-950 shadow-lg transition hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-lime-300" href="sms:+17373144215" aria-label="Text Nieto Green Care">
++      <a className="inline-flex items-center gap-2 rounded-full bg-lime-500 px-5 py-3 font-bold text-[#0F2E25] shadow-xl shadow-lime-500/20 transition hover:-translate-y-0.5 hover:bg-emerald-400 focus:outline-none focus:ring-4 focus:ring-lime-300" href="sms:+17373144215" aria-label="Text Nieto Green Care">
+         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7 2.75h10A2.25 2.25 0 0 1 19.25 5v14A2.25 2.25 0 0 1 17 21.25H7A2.25 2.25 0 0 1 4.75 19V5A2.25 2.25 0 0 1 7 2.75ZM12 17.25h.01" /></svg>
+         <span>Text us</span>
+         <span aria-hidden="true">›</span>
+-- 
+2.43.0
+
