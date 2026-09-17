@@ -1,4 +1,4 @@
--- Operational admin upgrade: pending quotes, extended funnel metadata and daily capacity.
+-- Operational admin upgrade: pending quotes, extended funnel metadata and explicit daily capacity.
 ALTER TYPE public.lead_status ADD VALUE IF NOT EXISTS 'pending' BEFORE 'scheduled';
 
 ALTER TABLE public.leads
@@ -9,13 +9,15 @@ ALTER TABLE public.leads ALTER COLUMN status SET DEFAULT 'pending';
 
 CREATE TABLE IF NOT EXISTS public.schedule_capacity(
   service_date date PRIMARY KEY,
-  max_slots integer NOT NULL DEFAULT 8 CHECK(max_slots >= 0),
+  -- Zero means no scheduling capacity has been configured for the date yet.
+  -- Administrators must explicitly choose a positive capacity before scheduling work.
+  max_slots integer NOT NULL DEFAULT 0 CHECK(max_slots >= 0),
   booked_slots integer NOT NULL DEFAULT 0 CHECK(booked_slots >= 0),
   is_blocked boolean NOT NULL DEFAULT false,
   note text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  CHECK(booked_slots <= max_slots OR is_blocked)
+  CHECK(booked_slots <= max_slots)
 );
 
 ALTER TABLE public.schedule_capacity ENABLE ROW LEVEL SECURITY;
@@ -27,17 +29,37 @@ CREATE TRIGGER schedule_capacity_updated BEFORE UPDATE ON public.schedule_capaci
 
 CREATE OR REPLACE FUNCTION public.recalculate_booked_slots(target_date date) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+  scheduled_count integer;
 BEGIN
-  INSERT INTO public.schedule_capacity(service_date,booked_slots)
-  VALUES(target_date,(SELECT count(*) FROM public.leads WHERE requested_date=target_date AND status='scheduled'))
-  ON CONFLICT(service_date) DO UPDATE SET booked_slots=(SELECT count(*) FROM public.leads WHERE requested_date=target_date AND status='scheduled');
+  SELECT count(*)::integer INTO scheduled_count
+  FROM public.leads
+  WHERE requested_date=target_date AND status='scheduled';
+
+  -- Do not invent business capacity for dates the administrator has not configured.
+  -- If a configured date would be exceeded, fail the scheduling transaction.
+  IF EXISTS (
+    SELECT 1 FROM public.schedule_capacity
+    WHERE service_date=target_date
+      AND (is_blocked OR scheduled_count > max_slots)
+  ) THEN
+    RAISE EXCEPTION 'Service date is blocked or at capacity';
+  END IF;
+
+  UPDATE public.schedule_capacity
+  SET booked_slots=scheduled_count
+  WHERE service_date=target_date;
 END;$$;
 
 CREATE OR REPLACE FUNCTION public.sync_schedule_capacity() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
-  IF TG_OP='UPDATE' AND OLD.requested_date IS NOT NULL THEN PERFORM public.recalculate_booked_slots(OLD.requested_date); END IF;
-  IF NEW.requested_date IS NOT NULL THEN PERFORM public.recalculate_booked_slots(NEW.requested_date); END IF;
+  IF TG_OP='UPDATE' AND OLD.requested_date IS NOT NULL THEN
+    PERFORM public.recalculate_booked_slots(OLD.requested_date);
+  END IF;
+  IF NEW.requested_date IS NOT NULL THEN
+    PERFORM public.recalculate_booked_slots(NEW.requested_date);
+  END IF;
   RETURN NEW;
 END;$$;
 
