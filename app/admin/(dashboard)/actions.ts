@@ -6,7 +6,7 @@ const text=(f:FormData,k:string)=>String(f.get(k)||"").trim();
 const bool=(f:FormData,k:string)=>f.get(k)==="on";
 const num=(f:FormData,k:string)=>Number(f.get(k)||0);
 async function admin(){const auth=await requireAdmin();if(!auth)throw new Error("Unauthorized");return auth.db;}
-function refresh(...paths:string[]){paths.forEach(revalidatePath);}
+function refresh(...paths:string[]){for(const path of paths)revalidatePath(path);}
 
 export async function saveService(f:FormData){const db=await admin();const id=text(f,"id");const row={slug:text(f,"slug"),name_en:text(f,"name_en"),name_es:text(f,"name_es"),description_en:text(f,"description_en"),description_es:text(f,"description_es"),starting_price:num(f,"starting_price"),pricing_unit:text(f,"pricing_unit")||null,active:bool(f,"active"),featured:bool(f,"featured"),sort_order:num(f,"sort_order")};if(!row.slug||!row.name_en||!row.name_es)throw new Error("Service name and slug are required");const q=id?db.from("services").update(row).eq("id",id):db.from("services").insert(row);const {error}=await q;if(error)throw new Error(error.message);refresh("/admin/services","/en/services","/es/services");}
 export async function deleteService(f:FormData){const db=await admin();const {error}=await db.from("services").delete().eq("id",text(f,"id"));if(error)throw new Error(error.message);refresh("/admin/services");}
