@@ -33,27 +33,25 @@ function addMinutes(date:string,time:string,minutes:number){
   const [hour,minute]=time.split(":").map(Number);
   const value=new Date(Date.UTC(year,month-1,day,hour,minute));
   value.setUTCMinutes(value.getUTCMinutes()+minutes);
-  const yyyy=value.getUTCFullYear();
-  const mm=String(value.getUTCMonth()+1).padStart(2,"0");
-  const dd=String(value.getUTCDate()).padStart(2,"0");
-  const hh=String(value.getUTCHours()).padStart(2,"0");
-  const min=String(value.getUTCMinutes()).padStart(2,"0");
+  const yyyy=value.getUTCFullYear();const mm=String(value.getUTCMonth()+1).padStart(2,"0");const dd=String(value.getUTCDate()).padStart(2,"0");const hh=String(value.getUTCHours()).padStart(2,"0");const min=String(value.getUTCMinutes()).padStart(2,"0");
   return `${yyyy}-${mm}-${dd}T${hh}:${min}:00`;
 }
 
 export async function createCalendarEvent(lead:CalendarLead){
-  const config=calendarConfig();
-  if(!config)return null;
+  const config=calendarConfig();if(!config)return null;
   if(!lead.requested_date||!lead.requested_time)throw new Error("A service date and time are required before scheduling");
-  const token=await accessToken();
-  if(!token)throw new Error("Google Calendar credentials are incomplete");
-  const time=lead.requested_time.slice(0,5);
-  if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error("Invalid requested service time");
-  const start=`${lead.requested_date}T${time}:00`;
-  const end=addMinutes(lead.requested_date,time,config.duration);
+  const token=await accessToken();if(!token)throw new Error("Google Calendar credentials are incomplete");
+  const time=lead.requested_time.slice(0,5);if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error("Invalid requested service time");
+  const start=`${lead.requested_date}T${time}:00`;const end=addMinutes(lead.requested_date,time,config.duration);
   const event={summary:`Nieto Green Care — ${lead.full_name}`,location:lead.property_address,description:`Customer: ${lead.full_name}\nPhone: ${lead.phone}\nEmail: ${lead.email}\nFrequency: ${lead.frequency}\nEstimate: ${lead.estimated_price??"Custom quote"}\n${lead.notes||""}`,start:{dateTime:start,timeZone:"America/Chicago"},end:{dateTime:end,timeZone:"America/Chicago"},extendedProperties:{private:{lead_id:lead.id}}};
   const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.calendarId)}/events`,{method:"POST",headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},body:JSON.stringify(event),cache:"no-store"});
   if(!r.ok)throw new Error(`Google Calendar event creation failed (${r.status})`);
-  const body=await r.json() as {id:string};
-  return body.id;
+  const body=await r.json() as {id:string};return body.id;
+}
+
+export async function deleteCalendarEvent(eventId:string){
+  const config=calendarConfig();if(!config||!eventId)return;
+  const token=await accessToken();if(!token)throw new Error("Google Calendar credentials are incomplete");
+  const r=await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(config.calendarId)}/events/${encodeURIComponent(eventId)}`,{method:"DELETE",headers:{authorization:`Bearer ${token}`},cache:"no-store"});
+  if(!r.ok&&r.status!==404&&r.status!==410)throw new Error(`Google Calendar event deletion failed (${r.status})`);
 }
