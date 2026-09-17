@@ -21,7 +21,7 @@ export async function updateLeadStatus(formData:FormData){
     const {error}=await auth.db.from("leads").update({status:"scheduled"}).eq("id",id).eq("status",current);
     if(error)throw new Error(`Could not schedule lead: ${error.message}`);
     try{
-      const eventId=await createCalendarEvent({...lead,status:"scheduled"});
+      const eventId=await createCalendarEvent(lead);
       if(eventId){const {error:calendarIdError}=await auth.db.from("leads").update({calendar_event_id:eventId}).eq("id",id);if(calendarIdError){await deleteCalendarEvent(eventId).catch(cleanup=>console.error("Calendar cleanup failed",cleanup));await auth.db.from("leads").update({status:current,calendar_event_id:null}).eq("id",id);throw new Error("Could not save Google Calendar event reference");}}
     }catch(error){
       await auth.db.from("leads").update({status:current,calendar_event_id:null}).eq("id",id);
