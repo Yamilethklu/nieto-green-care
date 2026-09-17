@@ -20,4 +20,7 @@ export const areas=[
 {slug:"cedar-park-tx",name:"Cedar Park",en:"Consistent property care that keeps Cedar Park lawns clean, edged, and manageable.",es:"Cuidado consistente que mantiene los jardines de Cedar Park limpios y definidos."},
 {slug:"liberty-hill-tx",name:"Liberty Hill",en:"Practical lawn and acreage-edge maintenance with clear communication from request to follow-up.",es:"Mantenimiento práctico con comunicación clara desde la solicitud hasta el seguimiento."},
 {slug:"jarrell-tx",name:"Jarrell",en:"Local lawn service options for routine upkeep, cleanup, and new landscape projects.",es:"Opciones locales para mantenimiento, limpieza y nuevos proyectos de jardín."}];
+// Phase 2: the public gallery must contain only approved Nieto Green Care project photos.
+// Until real images are published through the gallery table, we intentionally show no fallback stock photography.
+export const galleryFallback:never[]=[];
 export const localized=(s:Service,l:Locale)=>({name:l==="es"?s.name_es:s.name_en,description:l==="es"?s.description_es:s.description_en});

@@ -1,0 +1,1 @@
+import type {MetadataRoute} from "next";export default function manifest():MetadataRoute.Manifest{return{name:"Nieto Green Care",short_name:"Nieto Green Care",description:"Professional lawn care and landscaping in Central Texas",start_url:"/en",display:"standalone",background_color:"#f6f3ea",theme_color:"#123c2d"}}
