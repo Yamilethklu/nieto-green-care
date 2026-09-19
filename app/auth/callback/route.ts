@@ -4,9 +4,8 @@ import {sessionClient} from "@/lib/supabase/auth";
 export async function GET(request:Request){
   const requestUrl=new URL(request.url);
   const code=requestUrl.searchParams.get("code");
-  const next=requestUrl.searchParams.get("next")?.startsWith("/")
-    ? requestUrl.searchParams.get("next")!
-    : "/admin";
+  const nextParam=requestUrl.searchParams.get("next");
+  const next=nextParam?.startsWith("/")&&!nextParam.startsWith("//")?nextParam:"/admin";
 
   if(code){
     const db=await sessionClient();
